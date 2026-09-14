@@ -1,0 +1,6 @@
+Id: DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e
+Name: DLsite Update Monitor
+Author: OpenAI-assisted local build
+Version: 0.1.0
+Module: DLsiteUpdateMonitor.dll
+Type: GenericPlugin
