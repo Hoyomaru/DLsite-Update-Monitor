@@ -22,6 +22,8 @@ DLsite作品を多数管理していると、各商品ページを手作業で�
 
 - 現在の正式Version: **1.0.0**
 - リリース位置付け: **初回正式公開版**
+- GitHub Release: **v1.0.0 公開済み**
+- Git tag: **`v1.0.0`**
 - Playnite実機検証基準: **10.56**
 - Core自動テスト: **63ケース PASS（v0.1.0正式公開前検証記録）**
 - `.pext`インストール試験: **PASS（v0.1.0正式公開前検証記録）**
@@ -30,7 +32,14 @@ DLsite作品を多数管理していると、各商品ページを手作業で�
 
 v1.0.0は、v0.1.0として検証していた現行実装を初回正式公開版として位置付けたVersionです。監視ロジックとTracking Schemaはv0.1.0検証時点から変更していません。
 
-v0.1.0の詳細な検証証跡と旧パッケージSHA-256は [RELEASE_STATUS.md](RELEASE_STATUS.md) を参照してください。v1.0.0では新しい`.pext`を生成し、SHA-256を再計算します。
+公開中のv1.0.0パッケージ:
+
+```text
+DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_0_0.pext
+SHA-256: 676dc558e4c66265bab27a2d28a01cd53e541692a1627ab8661b13d4aa0cf9e0
+```
+
+v0.1.0の詳細な検証証跡と旧パッケージSHA-256は [RELEASE_STATUS.md](RELEASE_STATUS.md) を参照してください。
 
 ## 主な機能
 
@@ -82,13 +91,19 @@ v0.1.0の詳細な検証証跡と旧パッケージSHA-256は [RELEASE_STATUS.md
 
 ### 一般利用者向け
 
-GitHub Releasesのv1.0.0 Release Assetsから次の`.pext`をダウンロードし、Playniteへインストールしてください。
+[v1.0.0 Release](https://github.com/Hoyomaru/DLsite-Update-Monitor/releases/tag/v1.0.0) のAssetsから次の`.pext`をダウンロードし、Playniteへインストールしてください。
 
 ```text
 DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_0_0.pext
 ```
 
-同じReleaseに添付する`SHA256SUMS.txt`でダウンロードした`.pext`のSHA-256を確認できます。
+公開AssetのSHA-256:
+
+```text
+676dc558e4c66265bab27a2d28a01cd53e541692a1627ab8661b13d4aa0cf9e0
+```
+
+同じReleaseに添付されている`SHA256SUMS.txt`も確認用に利用できます。
 
 `.pext`はソースツリーへコミットせず、GitHub Releasesで配布します。
 
@@ -344,7 +359,7 @@ tools\Validate-Build.cmd
 
 このゲートは.NET 8 SDK / .NET Framework 4.6.2 Targeting Pack、Coreテスト、`net462`プラグインビルド、必須成果物、禁止ランタイムDLLの非同梱、`extension.yaml`の基本整合性を確認します。
 
-v0.1.0の保存済み検証ではCoreテスト63ケースがPASSしています。v1.0.0公開用成果物はVersion metadata更新後にこのゲートを再実行してください。
+v0.1.0の保存済み検証ではCoreテスト63ケースがPASSしています。v1.0.0は公開済みですが、このリポジトリ内にVersion metadata更新後の実機検証結果を追加記録していないため、公開後ドキュメントでは未確認事項を推測でPASS扱いしません。次のRelease候補では必ず現行Versionでゲートを再実行してください。
 
 実機確認は [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md) のGate A〜Fを順番に実施してください。
 
@@ -373,7 +388,7 @@ DLsite-Update-Monitor/
 - [CHANGELOG.md](CHANGELOG.md) — バージョン履歴
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — コンポーネント・データフロー・状態設計
 - [docs/RELEASE.md](docs/RELEASE.md) — リリース手順とチェックリスト
-- [docs/RELEASE_NOTES_1.0.0.md](docs/RELEASE_NOTES_1.0.0.md) — v1.0.0 GitHub Release用ノート
+- [docs/RELEASE_NOTES_1.0.0.md](docs/RELEASE_NOTES_1.0.0.md) — v1.0.0 公開Release記録
 - [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — 詳細な診断と復旧
 - [BUILD.md](BUILD.md) — ビルド・自動検証
 - [IMPLEMENTATION_NOTES.md](IMPLEMENTATION_NOTES.md) — 旧リンク互換インデックス

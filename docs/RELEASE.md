@@ -1,37 +1,42 @@
 # リリース手順
 
-この文書はDLsite Update Monitorのリリース作業手順です。
+この文書はDLsite Update Monitorのリリース作業手順と、公開済みReleaseの確認記録です。
 
-現在のv1.0.0では、**ローカル自動検証 → Playnite実機Smoke Test → 検証した同一payloadのパッケージ化 → Git tag / GitHub Release**という順序を前提にしています。
-
-v1.0.0は、v0.1.0として検証していた現行実装を初回正式公開版として位置付けるReleaseです。監視ロジックとTracking Schemaはv0.1.0検証時点から変更していませんが、Version metadata変更後のbinaryは別成果物になるため、公開前検証を省略しません。
+基本フローは、**ローカル自動検証 → Playnite実機Smoke Test → 検証した同一payloadのパッケージ化 → Release commit → Git tag → GitHub Release**です。
 
 > [!IMPORTANT]
 > Smoke Testで確認した`artifacts\plugin`を、パッケージ作成前に再ビルドして別バイナリへ差し替えないでください。実機で確認したものと配布物を一致させることが重要です。
 
-## 1. v1.0.0リリース状況
+## 1. 現在の公開状況
 
-2026-09-14時点:
+2026-09-14時点で、v1.0.0は初回正式公開版としてGitHub Releasesへ公開済みです。
 
-- 正式公開Version: `1.0.0`
-- Plugin csproj Version: `1.0.0`
-- extension Version: `1.0.0`
-- リリース位置付け: 初回正式公開版
-- Tracking Schema: `1`
-- v0.1.0検証基準のCore tests: 63ケース PASS
-- v0.1.0検証基準のPlaynite実機Smoke Test: PASS
-- v0.1.0検証基準の33作品全ライブラリ確認: PASS
-- v0.1.0 `.pext`作成・インストール試験: PASS
-- v1.0.0 GitHub Release: この手順で作成する対象
-- GitHub Actions: 未導入
+```text
+Version: 1.0.0
+Release title: DLsite Update Monitor v1.0.0
+Tag: v1.0.0
+Tagged commit: a8aa212fbcaaded3411db74643c9345584e30e50
+Tracking Schema: 1
+Package: DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_0_0.pext
+SHA-256: 676dc558e4c66265bab27a2d28a01cd53e541692a1627ab8661b13d4aa0cf9e0
+```
 
-v0.1.0の検証証跡は [../RELEASE_STATUS.md](../RELEASE_STATUS.md) を参照してください。
+公開Release:
 
-v1.0.0公開用のRelease本文は [RELEASE_NOTES_1.0.0.md](RELEASE_NOTES_1.0.0.md) を基準にします。
+https://github.com/Hoyomaru/DLsite-Update-Monitor/releases/tag/v1.0.0
 
-## 2. リリース前に更新するもの
+公開Assets:
 
-Versionを上げる場合は、少なくとも次を確認します。
+```text
+DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_0_0.pext
+SHA256SUMS.txt
+```
+
+v0.1.0の正式公開前検証証跡は [../RELEASE_STATUS.md](../RELEASE_STATUS.md) を参照してください。v1.0.0の公開本文は [RELEASE_NOTES_1.0.0.md](RELEASE_NOTES_1.0.0.md) に保存しています。
+
+## 2. Versionを上げるときに更新するもの
+
+少なくとも次を同期します。
 
 ```text
 src/DLsiteUpdateMonitor.Plugin/DLsiteUpdateMonitor.Plugin.csproj
@@ -42,8 +47,6 @@ CHANGELOG.md
 docs/ARCHITECTURE.md
 docs/RELEASE.md
 ```
-
-v1.0.0ではcsprojとextension.yamlのVersionをどちらも`1.0.0`へ揃えます。
 
 `Package-Release.ps1`は`extension.yaml`からVersionを取得します。csprojとのVersion一致はRelease前に明示的に確認してください。
 
@@ -123,12 +126,6 @@ Newtonsoft.Json.dll
 
 自動検証が失敗したらRelease作業を止めてください。
 
-### v1.0.0で再実行が必要な理由
-
-v0.1.0で63ケースPASS・Plugin build PASSの証跡はありますが、csproj / extension Versionを1.0.0へ変更した後のbinaryはv0.1.0の既存binaryと同一ではありません。
-
-そのため、ロジック変更がなくてもv1.0.0公開候補で`Validate-Build.ps1`を再実行します。
-
 ## 5. 任意の静的事前検証
 
 Python 3がある場合:
@@ -173,8 +170,6 @@ Gate E: 5〜10作品
   ↓
 Gate F: 全ライブラリ
 ```
-
-v1.0.0はロジック変更を伴わないVersion整理ですが、公開binaryにVersion metadata変更が入るため、少なくともRelease candidateの読み込み、Version表示、主要操作、既存tracking引き継ぎを実機で再確認してください。正式配布物として扱う場合はGate A〜Fを完了するのが最も安全です。
 
 ### 即時中止条件
 
@@ -234,12 +229,6 @@ artifacts\release\SHA256SUMS.txt
 artifacts\release\RELEASE-SUMMARY.txt
 ```
 
-v1.0.0で期待するpackage名:
-
-```text
-DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_0_0.pext
-```
-
 ## 10. SHA-256確認
 
 Scriptが`System.Security.Cryptography.SHA256`でhashを計算し、`SHA256SUMS.txt`へ出力します。
@@ -253,6 +242,18 @@ Scriptが`System.Security.Cryptography.SHA256`でhashを計算し、`SHA256SUMS.
 
 が意図した候補と一致することを確認してください。
 
+### v1.0.0公開値
+
+```text
+Package:
+DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_0_0.pext
+
+SHA-256:
+676dc558e4c66265bab27a2d28a01cd53e541692a1627ab8661b13d4aa0cf9e0
+```
+
+この値はGitHubが公開Assetに記録しているdigestとして公開後に確認した値です。
+
 ### v0.1.0の過去検証値
 
 ```text
@@ -263,14 +264,14 @@ SHA-256:
 c84d8fbb3fb82e5d3d5c6bd974c153b33dd8437ff96f4447a4ed0c68c7a939bf
 ```
 
-このhashは**v0.1.0専用の履歴値**です。v1.0.0では必ず新しい生成物から再計算してください。
+v0.1.0のhashは**履歴値**です。別Versionへ流用しません。
 
 ## 11. `.pext`インストール確認
 
 Release候補の`.pext`そのものを使ってPlayniteへinstallし、少なくとも次を確認します。
 
 - Pluginが読み込まれる
-- Versionが`1.0.0`として認識される
+- Versionが意図した値として認識される
 - Menuが表示される
 - 設定を開ける
 - 既存の追跡状態が期待どおり引き継がれる
@@ -308,64 +309,60 @@ Build outputを直接配置した確認だけで、`.pext` install確認の代�
 
 影響があるものだけ更新します。
 
-v1.0.0では [RELEASE_NOTES_1.0.0.md](RELEASE_NOTES_1.0.0.md) もRelease作成直前に確認します。
+公開後は、Release URL、Tag、公開Asset、実SHA-256をREADME / DEVELOPMENT / CHANGELOG / Release記録へ反映します。
 
 ## 13. Release commit
 
 Release対象のコード・docs・Versionが揃っている状態でcommitします。
 
-v1.0.0の推奨commit message:
+例:
 
 ```text
-release: prepare v1.0.0
+release: prepare vX.Y.Z
 ```
 
 Commit後に、release候補として検証したsourceとcommitが一致しているか確認してください。
 
+v1.0.0ではTag `v1.0.0` がRelease準備commit `a8aa212fbcaaded3411db74643c9345584e30e50`を指しています。
+
 ## 14. Git tag
 
-v1.0.0からVersionに対応するTagを使う運用を推奨します。
+Versionに対応するTagは`vX.Y.Z`形式を使用します。
 
-v1.0.0:
+例:
 
 ```text
 v1.0.0
+v1.0.1
+v1.1.0
 ```
 
 Tagは、Version metadataとRelease用docsが揃ったRelease commitへ付けます。
 
-次Version以降も`vX.Y.Z`形式を維持してください。
-
 ## 15. GitHub Release
 
-### v1.0.0 Release title
+Release title:
 
 ```text
-DLsite Update Monitor v1.0.0
+DLsite Update Monitor vX.Y.Z
 ```
 
-### v1.0.0 Release notes
+Release notesには最低限、次を含めます。
 
-[RELEASE_NOTES_1.0.0.md](RELEASE_NOTES_1.0.0.md) の本文を使用します。
-
-最低限含める情報:
-
-- 初回正式公開版であること
 - 何ができるVersionか
-- 主要機能
+- 主要機能 / 変更
 - 安全性方針
 - 注意事項 / 制限
 - 対応Playnite Version
 - install/update上の注意
 - 非公式ツールであること
-- SHA-256は`SHA256SUMS.txt`を正とすること
+- 公開Asset名
+- SHA-256または`SHA256SUMS.txt`への案内
 
-### Assets
-
-少なくとも:
+Assets:
 
 ```text
-DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_0_0.pext
+<package>.pext
 SHA256SUMS.txt
 ```
 
@@ -373,52 +370,48 @@ SHA256SUMS.txt
 
 ## 16. GitHub Release後の確認
 
+公開後は次を確認します。
+
 - Release pageが開く
-- Version / tag / titleがすべて`1.0.0` / `v1.0.0`と一致
-- `.pext`がdownloadできる
+- Version / tag / titleが一致
+- Tagが意図したRelease commitを指す
+- `.pext`がRelease Assetとして存在
+- `SHA256SUMS.txt`がRelease Assetとして存在
 - asset名が正しい
-- SHA256SUMSと実asset hashが一致
+- 公開AssetのSHA-256を記録
 - READMEのinstall案内が現状と一致
 - CHANGELOGのVersion/dateが一致
 - source treeへ`.pext`が誤commitされていない
 
-## 17. v1.0.0 Release前チェックリスト
+### v1.0.0でGitHub上から確認済み
 
 ```text
-[x] Plugin csproj Versionを1.0.0へ更新
-[x] extension.yaml Versionを1.0.0へ更新
-[x] Version同士が一致
-[x] CHANGELOG更新
-[x] README更新
-[x] DEVELOPMENT更新
-[x] ARCHITECTURE更新
-[x] RELEASE docs更新
-[x] GitHub Release title / notes準備
-[ ] Validate-Build PASS（v1.0.0 metadataで再実行）
-[ ] Core tests PASS
-[ ] Plugin net462 build PASS
-[ ] 必須payload確認
-[ ] 禁止runtime DLL非同梱
-[ ] Smoke Gate A PASS
-[ ] Smoke Gate B PASS
-[ ] Smoke Gate C PASS
-[ ] Smoke Gate D PASS
-[ ] Smoke Gate E PASS
-[ ] Smoke Gate F PASS
-[ ] Smoke後にpayloadを再buildしていない
-[ ] Package-Release PASS
-[ ] v1.0.0 .pextが1つだけ生成
-[ ] v1.0.0 SHA-256確認
-[ ] v1.0.0 .pext install test PASS
-[ ] 既存tracking状態の引き継ぎ確認
-[ ] Release commit確認
-[ ] v1.0.0 Tag作成
-[ ] GitHub Release作成
-[ ] Asset download確認
-[ ] 公開Asset hash再確認
+[x] Release page公開
+[x] Release title = DLsite Update Monitor v1.0.0
+[x] Tag = v1.0.0
+[x] Tagがa8aa212fbcaaded3411db74643c9345584e30e50を指す
+[x] .pext Asset存在
+[x] SHA256SUMS.txt Asset存在
+[x] .pext Asset名確認
+[x] GitHub記録の.pext SHA-256確認
 ```
 
-チェック済み項目は、このVersion準備commitで完了する文書/Version整合作業のみです。runtime validation項目は実機で確認してからチェックしてください。
+`SHA256SUMS.txt`の本文と実Asset hashの一致そのものは、この公開後確認では独立に取得・照合できていないため、確認済みとは記録しません。
+
+## 17. v1.0.0の検証記録について
+
+v1.0.0は公開済みですが、現時点のリポジトリ内にVersion metadata変更後の次の結果を独立した検証証跡として追加していません。
+
+```text
+[ ] Validate-Build PASS（v1.0.0 metadata）
+[ ] Core tests PASS（v1.0.0 candidate）
+[ ] Plugin net462 build PASS（v1.0.0 candidate）
+[ ] Smoke Gate A〜F PASS（v1.0.0 candidate）
+[ ] v1.0.0 .pext install test PASS
+[ ] 既存tracking状態の引き継ぎ確認（v1.0.0 .pext）
+```
+
+公開済みという事実だけからこれらを逆算してPASSにはしません。将来、実施記録を追加する場合は、実際のログ・summary・手順に基づいて更新してください。
 
 ## 18. 現在の自動化 / 手動工程
 
@@ -441,8 +434,8 @@ SHA256SUMS.txt
 
 ## 19. Releaseでやってはいけないこと
 
-- v0.1.0の`.pext`を名前だけ変えてv1.0.0として配布する
-- v0.1.0のSHA-256をv1.0.0へコピーする
+- 過去Versionの`.pext`を名前だけ変えて新Versionとして配布する
+- 過去VersionのSHA-256を新Versionへコピーする
 - Smoke Test前に`.pext`を最終配布物と決める
 - Smokeで確認した後に別binaryをbuildし直してそのまま配布する
 - test失敗を無視してpackする

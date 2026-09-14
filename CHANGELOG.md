@@ -57,6 +57,20 @@ v0.1.0で実機検証していた現行実装を、公開用Version `1.0.0` と�
 - Plugin管理外のPlayniteタグを削除しない設計
 - API Key、Access Token、PasswordなどのCredentialを必要としない構成
 
+### Published
+
+2026-09-14にGitHub Releaseとして正式公開しました。
+
+```text
+Release title: DLsite Update Monitor v1.0.0
+Tag: v1.0.0
+Tagged commit: a8aa212fbcaaded3411db74643c9345584e30e50
+Package: DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_0_0.pext
+SHA-256: 676dc558e4c66265bab27a2d28a01cd53e541692a1627ab8661b13d4aa0cf9e0
+```
+
+Release Assetsには`.pext`と`SHA256SUMS.txt`を公開しています。
+
 ### Validation basis
 
 v1.0.0は、v0.1.0として保存されている次の検証証跡を基準にしています。
@@ -72,7 +86,7 @@ v1.0.0は、v0.1.0として保存されている次の検証証跡を基準に�
 - `.pext`作成・インストール試験 PASS
 - インストール後の既存監視状態維持 PASS
 
-ただし、Version metadata変更後のv1.0.0配布バイナリはv0.1.0の既存`.pext`とは別成果物です。公開前に `Validate-Build.ps1`、必要な実機Smoke Test、`Package-Release.ps1`、v1.0.0 `.pext`インストール確認を実行し、新しいSHA-256を生成してください。
+Version metadata変更後のv1.0.0配布バイナリはv0.1.0の既存`.pext`とは別成果物です。v1.0.0の公開Asset・Tag・Releaseは確認済みですが、Version `1.0.0`での`Validate-Build.ps1`、Smoke Gate A〜F、`.pext` install testの再実施結果は、現時点のリポジトリ内に独立した検証証跡として追加されていません。公開済みという事実だけから、それらを推測でPASS扱いしません。
 
 ## [0.1.0] - 2026-09-14
 

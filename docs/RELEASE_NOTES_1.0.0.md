@@ -7,6 +7,27 @@ Playniteで管理しているDLsite作品について、DLsite商品ページの
 > [!IMPORTANT]
 > 本ツールはDLsiteおよびPlayniteの公式機能・公式サポートではない非公式ツールです。
 
+## 公開情報
+
+2026-09-14にGitHub Releaseとして正式公開しました。
+
+```text
+Release title: DLsite Update Monitor v1.0.0
+Tag: v1.0.0
+Tagged commit: a8aa212fbcaaded3411db74643c9345584e30e50
+Package: DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_0_0.pext
+SHA-256: 676dc558e4c66265bab27a2d28a01cd53e541692a1627ab8661b13d4aa0cf9e0
+```
+
+Release Assetsには次の2ファイルを公開しています。
+
+```text
+DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_0_0.pext
+SHA256SUMS.txt
+```
+
+Release: https://github.com/Hoyomaru/DLsite-Update-Monitor/releases/tag/v1.0.0
+
 ## 主な機能
 
 - Playnite `Game.Links` からDLsite作品IDを解決
@@ -48,7 +69,13 @@ Release Assetsから次の`.pext`をダウンロードし、Playniteへインス
 DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_0_0.pext
 ```
 
-ダウンロード後は、同梱する`SHA256SUMS.txt`のSHA-256と一致することを確認できます。
+公開AssetのSHA-256:
+
+```text
+676dc558e4c66265bab27a2d28a01cd53e541692a1627ab8661b13d4aa0cf9e0
+```
+
+同じReleaseに添付されている`SHA256SUMS.txt`も確認用に利用できます。
 
 ## v1.0.0で行わないこと
 
@@ -68,5 +95,7 @@ DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_0_0.pext
 v0.1.0は正式公開前の検証基準として、Core自動テスト63ケース、Playnite実機Smoke Test、DLsiteリンク登録済み33作品の確認、`.pext`インストール試験まで実施していました。
 
 v1.0.0はその現行実装を初回正式公開版として位置付け、Plugin Versionと公開ドキュメントを1.0.0へ揃えたReleaseです。Tracking Schemaは引き続き`1`です。
+
+v1.0.0のGitHub Release・Tag・公開Assetは公開後に確認済みです。一方、Version metadata変更後のv1.0.0について、`Validate-Build.ps1`、Smoke Gate A〜F、`.pext` install testを再実施した結果は、現時点のリポジトリ内に独立した検証証跡として追加されていません。公開済みという事実だけから、それらを推測でPASS扱いしません。
 
 過去の検証記録は`RELEASE_STATUS.md`、開発・安全設計は`DEVELOPMENT.md`、リリース工程は`docs/RELEASE.md`を参照してください。

@@ -16,6 +16,10 @@
 | リリース位置付け | 初回正式公開版 |
 | Plugin Version | `src/DLsiteUpdateMonitor.Plugin/DLsiteUpdateMonitor.Plugin.csproj`: `1.0.0` |
 | extension Version | `src/DLsiteUpdateMonitor.Plugin/extension.yaml`: `1.0.0` |
+| GitHub Release | `DLsite Update Monitor v1.0.0` 公開済み |
+| Git tag | `v1.0.0` → `a8aa212fbcaaded3411db74643c9345584e30e50` |
+| 公開`.pext` | `DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_0_0.pext` |
+| 公開`.pext` SHA-256 | `676dc558e4c66265bab27a2d28a01cd53e541692a1627ab8661b13d4aa0cf9e0` |
 | Playnite | 10.56で実機検証済み |
 | Plugin target | .NET Framework 4.6.2 |
 | Core target | .NET Framework 4.6.2 / .NET 8.0 |
@@ -29,7 +33,7 @@
 
 v1.0.0は、v0.1.0として検証していた現行実装を初回正式公開版として位置付けたVersionです。監視ロジックとTracking Schemaはv0.1.0検証時点から変更していません。
 
-v0.1.0の実機検証証跡は [RELEASE_STATUS.md](RELEASE_STATUS.md) を正とします。Version metadata変更後のv1.0.0配布バイナリは別成果物なので、公開前にbuild / test / Smoke Test / package / install確認を再実施し、新しいSHA-256を生成してください。
+v1.0.0のGitHub Release、Tag、公開Asset、GitHubが記録するAsset digestは公開後に確認済みです。一方、Version metadata変更後のv1.0.0について、`Validate-Build.ps1`、Smoke Gate A〜F、`.pext` install testを再実施した結果は、このリポジトリ内の検証証跡としては追加されていません。したがって、それらを推測でPASS扱いせず、v0.1.0の実機検証証跡は [RELEASE_STATUS.md](RELEASE_STATUS.md) を正とします。
 
 ---
 
@@ -665,7 +669,7 @@ v0.1.0正式公開前の検証記録では63ケースPASS。
 
 HTTP testsでは `HttpClient` / Clock / Delayを差し替え、実DLsiteへアクセスせず検証します。
 
-v1.0.0の公開成果物はVersion metadata変更後に全Core testとPlugin buildを再実行してください。
+v1.0.0は公開済みですが、Version metadata変更後の全Core test / Plugin build結果は公開後のリポジトリ証跡として追加されていません。次のRelease候補では、そのVersionの成果物で必ず全Core testとPlugin buildを実行・記録してください。
 
 ### Static validation
 
@@ -728,11 +732,21 @@ Commit / Tag / GitHub Release
 
 Version変更時はREADME / DEVELOPMENT / CHANGELOG / 必要なRelease記録も同期します。
 
-### v1.0.0公開時の注意
+### v1.0.0公開記録
 
-v0.1.0の既存`.pext`とSHA-256は正式公開前の検証証跡です。Version metadataを1.0.0へ更新すると配布バイナリは別成果物になるため、旧SHAを流用しません。
+v1.0.0は2026-09-14にGitHub Releaseとして公開済みです。
 
-v1.0.0のGitHub Release用本文は [docs/RELEASE_NOTES_1.0.0.md](docs/RELEASE_NOTES_1.0.0.md) を基準にします。
+```text
+Release title: DLsite Update Monitor v1.0.0
+Tag: v1.0.0
+Tagged commit: a8aa212fbcaaded3411db74643c9345584e30e50
+Package: DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_0_0.pext
+SHA-256: 676dc558e4c66265bab27a2d28a01cd53e541692a1627ab8661b13d4aa0cf9e0
+```
+
+v0.1.0の既存`.pext`とSHA-256は正式公開前の検証証跡であり、v1.0.0へ流用していません。
+
+v1.0.0のGitHub Release本文は [docs/RELEASE_NOTES_1.0.0.md](docs/RELEASE_NOTES_1.0.0.md) に保存しています。
 
 ---
 
@@ -753,9 +767,7 @@ v0.1.0最終検証記録では、実機検証済みPlugin本体ソースを変�
 
 ## 20. 確認済み / 未確認 / 既知制限
 
-### 確認済み
-
-以下はv0.1.0正式公開前の検証証跡として確認済みです。
+### v0.1.0正式公開前の検証証跡として確認済み
 
 - Core test 63ケース
 - net462 Plugin build
@@ -769,14 +781,23 @@ v0.1.0最終検証記録では、実機検証済みPlugin本体ソースを変�
 - `.pext`作成・install
 - install後の既存監視状態維持
 
-### v1.0.0公開前に再確認するもの
+### v1.0.0公開後にGitHub上で確認済み
 
-- Version `1.0.0`での `Validate-Build.ps1`
-- Core test / Plugin build
-- 必要なSmoke Gate
-- `DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_0_0.pext`の生成
-- v1.0.0 `.pext` install test
-- 新規SHA-256
+- Release `DLsite Update Monitor v1.0.0` がdraft / prereleaseではない正式Releaseとして公開済み
+- Tag `v1.0.0` がRelease準備commit `a8aa212fbcaaded3411db74643c9345584e30e50`を指す
+- 公開Asset `DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_0_0.pext` が存在
+- `SHA256SUMS.txt` がRelease Assetとして存在
+- GitHubが公開`.pext`へ記録しているSHA-256 digestは `676dc558e4c66265bab27a2d28a01cd53e541692a1627ab8661b13d4aa0cf9e0`
+
+### v1.0.0についてリポジトリ内の検証証跡からは確認できないもの
+
+- Version `1.0.0`での `Validate-Build.ps1` 実行結果
+- Version `1.0.0`でのCore test / Plugin build結果
+- Version `1.0.0`成果物でのSmoke Gate A〜F結果
+- v1.0.0 `.pext` install test結果
+- v1.0.0 install後の既存tracking状態引き継ぎ結果
+
+これらは公開済みという事実から逆算してPASS扱いしません。必要であれば将来、実施記録を別途追加してください。
 
 ### 未確認
 
@@ -880,7 +901,7 @@ PluginはPlaynite SDKの `LogManager.GetLogger()` を使用します。独自log
 - `docs/ARCHITECTURE.md` — コンポーネント関係・処理/データフロー・設計判断
 - `docs/TROUBLESHOOTING.md` — 詳細な問題解決
 - `docs/RELEASE.md` — Release工程
-- `docs/RELEASE_NOTES_1.0.0.md` — v1.0.0 GitHub Release用本文
+- `docs/RELEASE_NOTES_1.0.0.md` — v1.0.0 GitHub Release本文 + 公開Asset記録
 - `docs/SMOKE_TEST.md` — Playnite実機Gate
 - `BUILD.md` — build / validation command
 - `RELEASE_STATUS.md` — v0.1.0正式公開前の検証証跡
