@@ -1,42 +1,42 @@
-# DLsite Update Monitor 0.1.0 — Final release status
+# DLsite Update Monitor v0.1.0 — 最終リリース検証記録
 
-## Final status
+## 最終状態
 
-Version **0.1.0** has completed the planned build, automated test, staged runtime, full-library, packaging, and packaged-extension installation gates.
+バージョン **0.1.0** は、予定していたビルド、自動テスト、段階的な実機テスト、全ライブラリチェック、パッケージ作成、`.pext`インストール試験まで完了しています。
 
-This document records the validated release state. No source-code change was made after the runtime-validated Milestone 3.2 payload; the only post-validation tooling change was replacing `Get-FileHash` in `tools/Package-Release.ps1` with a SHA-256 implementation based on `System.Security.Cryptography.SHA256` for compatibility with older Windows PowerShell environments.
+実機検証済みのMilestone 3.2以降、プラグイン本体のソースコードには変更を加えていません。検証後に行った変更は、古いWindows PowerShellでも動作するよう`tools/Package-Release.ps1`のSHA-256計算を`Get-FileHash`から`System.Security.Cryptography.SHA256`ベースへ変更したことだけです。
 
-## Build and automated-test gate
+## ビルド・自動テスト
 
 `tools\Validate-Build.cmd`: **PASS**
 
-Validated by that gate:
+確認済み項目:
 
-- restore succeeded
-- 63 Core test cases passed
-- `net462` Playnite plugin build succeeded
-- required payload files were present
-- private copies of `Playnite.SDK.dll`, `AngleSharp.dll`, and `Newtonsoft.Json.dll` were absent
-- validated payload was written to `artifacts\plugin`
+- NuGet restore成功
+- Core自動テスト **63ケース PASS**
+- `net462`向けPlayniteプラグインビルド成功
+- 必須成果物ファイルの存在確認
+- `Playnite.SDK.dll`、`AngleSharp.dll`、`Newtonsoft.Json.dll`の不要な同梱がないことを確認
+- 検証済み成果物を`artifacts\plugin`へ出力
 
-## Runtime validation
+## Playnite実機検証
 
-Staged validation completed successfully against the 33-game DLsite-linked Playnite library:
+DLsiteリンクを登録した33作品のPlayniteライブラリで段階的に検証しました。
 
-- Gate A — extension load, menus, settings: PASS
-- Gate B — DLsite link diagnosis: 33 / 33 normal
-- Gate C — first observation created baseline; repeat check reported no change: PASS
-- Gate D — temporary network failure preserved existing baseline; recovery returned to no-change state: PASS
-- Gate E — small-batch behavior: PASS
-- Gate F — full-library check: PASS
+- Gate A — 拡張機能の読み込み、メニュー、設定画面: **PASS**
+- Gate B — DLsiteリンク診断: **33 / 33 正常**
+- Gate C — 初回ベースライン作成、同一状態の再チェック: **PASS**
+- Gate D — 一時的な通信失敗時のベースライン保持、復旧後の再確認: **PASS**
+- Gate E — 小規模バッチチェック: **PASS**
+- Gate F — 全33作品のライブラリチェック: **PASS**
 
-No mass false positives, destructive metadata changes, or baseline-loss behavior were reported during the staged validation.
+段階的な検証中に、大量の誤検知、破壊的なメタデータ変更、ベースライン消失は確認されませんでした。
 
-## Release package
+## 配布パッケージ
 
-The validated payload was packaged with Playnite Toolbox and then installed successfully as a `.pext` package.
+Playnite Toolboxで`.pext`を作成し、そのパッケージからのインストール試験も成功しています。
 
-Package name:
+パッケージ名:
 
 ```text
 DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_0_1_0.pext
@@ -48,10 +48,14 @@ SHA-256:
 c84d8fbb3fb82e5d3d5c6bd974c153b33dd8437ff96f4447a4ed0c68c7a939bf
 ```
 
-The packaged-extension installation test also passed, including preservation of existing tracking state.
+`.pext`からのインストール後も、既存の監視状態が維持されることを確認済みです。
 
-## Release decision
+`.pext`はソースリポジトリには含めず、GitHub Releasesなどで別途配布する運用とします。
 
-**DLsite Update Monitor v0.1.0 is approved as the first stable release.**
+## リリース判断
 
-The intentionally conservative v0.1.0 scope remains unchanged: DLsite-only monitoring of `更新情報` and `ファイル容量`, acknowledged-snapshot comparison, manual checks, safe persistence, and plugin-owned tags. Automatic downloading/patching and local executable-version inference remain out of scope.
+**DLsite Update Monitor v0.1.0を最初の安定版として扱います。**
+
+v0.1.0では安全性を優先し、DLsiteの`更新情報`と`ファイル容量`のみを監視します。比較基準は最後にユーザーが確認済みとしたリモートスナップショットです。
+
+自動ダウンロード、自動パッチ適用、ローカル実行ファイルからのバージョン推定はv0.1.0の対象外です。
