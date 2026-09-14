@@ -1,77 +1,181 @@
-# Implementation notes — milestone 1
+# 実装上の設計メモ
 
-## Frozen contract
+この文書は、DLsite Update Monitorの安全性に関わる重要な実装ルールをまとめたものです。将来の変更でも、ここに記載した前提を崩す場合は十分なテストと実機検証を行ってください。
 
-`SnapshotComparer.Compare(acknowledged, candidate)` is intentionally side-effect free.
+## 比較の基準
 
-It never accepts the previous observation as the comparison baseline. The orchestrator must always supply the user's last acknowledged snapshot.
+`SnapshotComparer.Compare(acknowledged, candidate)`は副作用を持ちません。
 
-### Safety rule
+比較対象は常に、ユーザーが最後に「適用済み」または「無視」として確定した`AcknowledgedSnapshot`と、新しく取得した候補スナップショットです。
 
-If any monitored field regresses from known/parsed data into missing or unparseable data, the result is `Indeterminate`, not `Changed` and not `NoChange`.
+直前のチェック結果を自動的に次回の基準へ進めてはいけません。未処理の更新は、ユーザーが明示的に確認するまで保留状態として残します。
 
-The orchestrator must not replace `AcknowledgedSnapshot` or `CurrentSnapshot` when comparison/validation is indeterminate.
+## 不確定な取得結果を変更扱いにしない
 
-### Monitoring vs check health
+監視している項目が、既知・解析済みの値から「欠落」または「解析不能」へ変化した場合は、`Changed`や`NoChange`ではなく`Indeterminate`として扱います。
 
-`MonitoringState` and `CheckHealth` are independent. A network error must not erase a pending update detected by an earlier successful check.
+比較または検証が不確定な場合、`AcknowledgedSnapshot`や`CurrentSnapshot`を上書きしてはいけません。
 
-## Product identity
+## 監視状態とチェック状態を分離する
 
-The resolver only accepts exact `dlsite.com` or a subdomain ending in `.dlsite.com` and extracts an ID only from `/product_id/<ID>`.
+`MonitoringState`と`CheckHealth`は独立しています。
 
-Supported v1 IDs follow the same current shape used by DLsite metadata providers: two letters plus 6 or 8 digits. This can be loosened later in one place if DLsite introduces a new ID shape.
+たとえば、前回の正常取得で更新を検出したあとにネットワークエラーが発生しても、保留中の更新状態を消してはいけません。
 
-## State mutation guard
+主な`MonitoringState`:
 
-`ComparisonResult.TargetState` is nullable. `Indeterminate` and `IdentityMismatch` return `null`; callers must interpret null as **do not mutate MonitoringState**. This makes preservation of an existing pending state the safe default.
+- `Uninitialized`
+- `Clean`
+- `PendingUpdateInfo`
+- `PendingFileChange`
+- `PendingUpdateAndFileChange`
 
-## Parser contract
+主な`CheckHealth`:
 
-The parser intentionally treats a missing update-information row as a valid `Missing` observation, but a present-yet-empty/unparseable row as `Unparsed`. File size is mandatory for comparison in v1; missing or unparseable file size yields a degraded snapshot and the orchestrator must preserve all acknowledged/current state.
+- `Healthy`
+- `NetworkError`
+- `RateLimited`
+- `AccessDenied`
+- `Timeout`
+- `ProductUnavailable`
+- `RedirectedToDifferentProduct`
+- `ParseError`
+- `ParseDegraded`
+- `LinkError`
+- `Cancelled`
 
-Normalization is deterministic: Unicode NFKC, whitespace normalization, embedded 20xx dates normalized to `yyyy-MM-dd`, and file sizes converted to bytes using a 1024-based unit scale. Raw source text is preserved alongside normalized values.
+## DLsite作品IDの解決
 
-## Tracking state machine
+リンク解決では、ホストが正確に`dlsite.com`、または`.dlsite.com`で終わるサブドメインであることを確認します。
 
-Network/check health is updated independently from monitoring state. `RecordCheckFailure` is forbidden from mutating acknowledged/current snapshots or `MonitoringState`. Successful but indeterminate comparisons store only `LastObservation` and diagnostic health; they do not advance the current or acknowledged state.
+作品IDはURLの`/product_id/<ID>`部分からのみ取得します。
 
-Acknowledging a pending change clones `CurrentSnapshot` into `AcknowledgedSnapshot`. Applied and Ignored use the same snapshot transition but distinct history event types.
+v0.1.0では、DLsiteメタデータ系実装で一般的な「英字2文字 + 6桁または8桁の数字」を作品IDとして受け入れます。将来DLsite側の形式が変わった場合は、解決ロジックを1か所で変更できる構成です。
 
-## Persistence
+## 状態変更のガード
 
-`TrackingRepository` writes `tracking.tmp`, immediately deserializes and validates it, then replaces the primary file while retaining `tracking.backup.json`. Unsupported newer schema versions throw and are never silently overwritten.
+`ComparisonResult.TargetState`はnullを許可します。
 
-## HTTP client contract
+`Indeterminate`や`IdentityMismatch`ではnullを返し、呼び出し側は「`MonitoringState`を変更しない」という意味として扱います。
 
-`DlsiteHttpClient` serializes all fetches with a semaphore, enforces a minimum interval between request starts, uses a per-attempt timeout, classifies HTTP failures, and retries only rate limiting, timeout, transport errors, and 5xx responses. HTTP 403 and 404/410 are terminal. `Retry-After` is preferred over configured retry delays.
+不確定なときに既存状態を維持することを安全側の既定動作とします。
 
-The production factory supplies `locale=ja_JP` and `loginchecked=1` cookies; tests inject `HttpClient` and fake delay/clock implementations so no live DLsite requests are required.
+## HTMLパーサーのルール
 
-## UpdateCheckService contract
+`更新情報`の行自体が存在しない場合は、有効な`Missing`観測として扱います。
 
-The service verifies requested-vs-resolved product identity before allowing a first baseline to be created. This closes a critical edge case where an old DLsite URL redirects to another product and there is no acknowledged snapshot yet for `SnapshotComparer` to compare against.
+一方、行は存在するものの空欄や解析不能の場合は`Unparsed`です。
 
-Only healthy, safely comparable snapshots enter the 24-hour cache. Cache hits are cloned and do not mutate the stored entry. A cached observation keeps its original `FetchedAtUtc`; `LastAttemptAtUtc` may advance, but `LastSuccessfulCheckAtUtc` reflects when DLsite was actually observed.
+`ファイル容量`はv0.1.0の比較に必須です。容量が取得できない、または解析不能の場合は劣化スナップショットとして扱い、既存の`AcknowledgedSnapshot`と`CurrentSnapshot`を維持します。
 
-## Static SDK compatibility review
+正規化は決定的に行います。
 
-The adapter is pinned to PlayniteSDK 6.16.0 for the current Playnite 10.56 stable line. Current Playnite source confirms the APIs used by the adapter (`GameMenuItemActionArgs.Games`, `ActivateGlobalProgress`, `GlobalProgressResult.Error`, `BufferedUpdate`, `GetPluginUserDataPath`, application lifecycle events) remain available.
+- Unicode NFKC
+- 空白の正規化
+- 20xx年の日付を`yyyy-MM-dd`へ正規化
+- ファイル容量を1024基準でバイトへ変換
+- 比較用の正規化値とあわせて元の文字列も保持
 
-Playnite 10.56 itself references Newtonsoft.Json 10.0.3, matching Core's compile-time reference. The net462 build excludes Newtonsoft and AngleSharp runtime assets so the extension does not ship competing copies of Playnite's own dependencies.
+DLsiteがHTTP 200を返しながら作品非公開・利用不可ページを表示する場合は、`.error_box_work`を検出して`ProductUnavailable`として扱います。
 
-## Progress error contract
+## TrackingStateMachine
 
-The Playnite adapter inspects `GlobalProgressResult.Error`. If a checkpoint/final persistence write throws, tag projection is stopped and the user receives an error instead of being shown a misleading success summary.
+チェック結果の健全性は、監視状態とは独立して更新します。
 
-State-mutating context-menu operations (Applied / Ignored / Reset) share the same operation semaphore as the batch checker so they cannot race the tracking database while a check is running.
+`RecordCheckFailure`は、次の項目を変更してはいけません。
 
-## Orchestration regression tests
+- `AcknowledgedSnapshot`
+- `CurrentSnapshot`
+- `MonitoringState`
 
-`UpdateCheckServiceTests` cover baseline creation, redirect-to-different-product before baseline, preservation of pending state across HTTP failures, preservation of current state across degraded parsing, and cache reuse without a second HTTP request.
+取得自体は成功していても比較が不確定な場合は、`LastObservation`と診断用のチェック状態だけを記録し、現在状態・確認済み状態は進めません。
 
-## Milestone 3.2
+保留中の変更を「適用済み」または「無視」にすると、`CurrentSnapshot`を`AcknowledgedSnapshot`へ複製します。スナップショット遷移は同じですが、履歴イベントは`Applied`と`Ignored`で区別します。
 
-- Added explicit `System.Net.Http` framework reference to `DLsiteUpdateMonitor.Core` for the `net462` target.
-- Reason: `HttpClient` is used by Core, so referencing it only from the Playnite plugin project is insufficient when Core is compiled independently for .NET Framework 4.6.2.
-- Added a static validation rule to prevent this regression.
+`監視状態をリセット`した場合は、スナップショットだけでなく登録URL・要求作品ID・解決URL・解決作品IDなどの作品識別情報もクリアします。
+
+## 作品ID変更の保護
+
+すでに追跡しているPlayniteゲームのDLsiteリンクが、別のRJ/RE/BJ/VJなどへ変更された場合、古いベースラインを新しい作品へ流用してはいけません。
+
+現在のリンクから得た作品IDと追跡済み作品IDが異なる場合は、HTTP通信を行う前に`LinkError`で停止します。
+
+別作品へ切り替える場合は、ユーザーが明示的に`監視状態をリセット`してから次回チェックで新しいベースラインを作成します。
+
+## 永続化
+
+`TrackingRepository`は、直接`tracking.json`を書き換えません。
+
+基本手順:
+
+1. `tracking.tmp`へ書き出す
+2. 直ちに再読み込みして検証する
+3. 正常な場合のみ本ファイルと置き換える
+4. `tracking.backup.json`を保持する
+
+対応していない新しいスキーマバージョンを検出した場合は例外として停止し、未知の形式を古い実装で上書きしません。
+
+## HTTPクライアント
+
+`DlsiteHttpClient`は共有クライアントを利用し、セマフォでDLsiteへの取得を直列化します。
+
+主なルール:
+
+- リクエスト開始間隔を確保
+- 各試行にタイムアウトを設定
+- 429、タイムアウト、通信エラー、5xxのみ再試行
+- 403、404/410は積極的に再試行しない
+- `Retry-After`がある場合は設定値より優先
+- `locale=ja_JP`と`loginchecked=1`のCookieを利用
+- キャンセルに対応
+
+テストでは`HttpClient`、時計、待機処理を差し替え、実際のDLsiteへアクセスせずに検証できます。
+
+## UpdateCheckService
+
+初回ベースラインを作成する前にも、要求した作品IDと最終的に解決された作品IDが同一であることを確認します。
+
+これにより、古いDLsite URLが別作品へリダイレクトされた場合に、誤った作品を初回ベースラインとして保存する問題を防ぎます。
+
+安全に比較できる正常スナップショットだけを24時間キャッシュへ登録します。
+
+キャッシュから取得したオブジェクトは複製して利用し、キャッシュ本体を変更しません。キャッシュされた観測の`FetchedAtUtc`は元の取得時刻を維持します。
+
+同一バッチ内で複数のPlayniteゲームが同じ作品IDを参照している場合、正常なリモート観測を再利用して重複通信を避けます。この再利用可否はゲームごとの`CheckHealth`とは分離して判定します。
+
+## Playnite連携
+
+Playnite 10.56との互換性を優先し、PlayniteSDK 6.16.0へ固定しています。
+
+Playnite本体が提供する次のランタイムDLLを拡張機能へ重複同梱しません。
+
+- `Playnite.SDK.dll`
+- `AngleSharp.dll`
+- `Newtonsoft.Json.dll`
+
+進捗処理では`GlobalProgressResult.Error`を確認します。途中保存や最終保存に失敗した場合はタグ反映を停止し、成功したように見える結果を表示しません。
+
+「適用済み」「無視」「監視状態をリセット」など状態を変更する操作は、バッチチェックと同じ操作セマフォを共有し、`tracking.json`への同時変更を防ぎます。
+
+タグ連携を無効にした場合は、プラグイン自身が管理する`[DLsite更新]`タグだけを削除し、ユーザーの無関係なタグには触れません。
+
+## 回帰テスト
+
+`UpdateCheckServiceTests`などで、少なくとも次の安全条件を検証しています。
+
+- 初回ベースライン作成
+- 初回ベースライン前の別作品リダイレクト検出
+- HTTP失敗後も保留状態を維持
+- パース劣化時に既知スナップショットを維持
+- 正常キャッシュ利用時に2回目のHTTP通信を行わない
+- HTTP 200の利用不可作品ページを`ProductUnavailable`として分類
+- 追跡中の作品ID変更を明示リセットなしで受け入れない
+- 最初のゲーム固有状態が劣化していても、正常なリモート観測を同作品の別ゲームで再利用可能
+
+## .NET Framework 4.6.2での`System.Net.Http`
+
+Coreプロジェクトは`net8.0`と`net462`の両方を対象にしています。
+
+`HttpClient`はCore側で使用するため、`net462`ターゲットでは`System.Net.Http`をCoreプロジェクト自身が明示参照します。プラグイン側だけに参照を置く構成ではCore単体の`.NET Framework 4.6.2`ビルドが失敗します。
+
+この参照漏れを防ぐため、静的検証にもチェックを追加しています。
