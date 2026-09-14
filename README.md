@@ -1,69 +1,98 @@
 # DLsite Update Monitor
 
-A Playnite 10 plugin for monitoring DLsite distribution-state changes for locally managed doujin games.
+Playniteで管理しているDLsite作品について、**DLsite側の配布状態の変化**を確認するためのプラグインです。
 
-## Current implementation status
+## 概要
 
-The implementation now includes:
+DLsiteの商品ページにある次の2項目を監視します。
 
-- Playnite-independent tracking data model
-- strict DLsite URL/product-ID resolver
-- update-information and file-size normalization
-- fixture-tested DLsite HTML parser
-- acknowledged-vs-current snapshot comparison
-- two-axis monitoring/check-health state model
-- atomic `tracking.json` persistence with backup/recovery
-- sequential HTTP client with request spacing, timeout, retry and `Retry-After`
-- product snapshot cache
-- end-to-end `UpdateCheckService`
-- minimal Playnite `GenericPlugin` adapter
-- manual all-game and per-game checks
-- progress/cancellation
-- same-product request deduplication inside a batch
-- remote-observation reuse separated from per-game tracking health
-- HTTP-200 DLsite product-unavailable page detection
-- explicit protection against changing a tracked game to a different RJ/RE/BJ/VJ without reset
-- reversible Playnite tag integration (disabling tags removes plugin-owned state tags)
-- link diagnostics
-- acknowledge / ignore / reset operations
-- plugin-owned Playnite tags only
-- regression tests for Core safety rules and orchestration
+- `更新情報`
+- `ファイル容量`
 
-The Core suite currently expands to **63 executable test cases** (49 Facts + 14 Theory data rows). Windows validation is automated by `tools/Validate-Build.ps1`.
+初回取得時は更新扱いにせず、その時点の状態を監視基準（ベースライン）として保存します。以後は、ユーザーが「適用済み」または「無視」として確定した状態と比較して変化を検出します。
 
-The rich result/history window is not implemented yet. The current Playnite UI intentionally stays minimal; the v0.1.0 runtime and packaged-extension validation are complete.
+ネットワークエラー、HTTPエラー、解析失敗などが発生しても、既存の監視状態や未処理の更新状態を消さないことを重視した設計です。
 
-## Detection contract
+## v0.1.0でできること
 
-v1 monitors only two DLsite signals:
+- Playniteの`Game.Links`からDLsite作品IDを解決
+- 全ゲームまたは個別ゲームの手動チェック
+- 初回チェック時のベースライン作成
+- `更新情報`の変更検出
+- `ファイル容量`の変更検出
+- 取得失敗時の既存状態保護
+- 同一作品IDへの重複通信を抑制
+- 更新状態をPlayniteタグへ反映
+- 「適用済み」「無視」「監視状態をリセット」操作
+- DLsiteリンク診断
+- `tracking.json`の安全な保存、バックアップ、破損保護
 
-1. `更新情報`
-2. `ファイル容量`
+## 対象環境
 
-It does **not** claim to determine the locally installed game's exact version.
+- Playnite 10.56
+- .NET Framework 4.6.2
+- PlayniteSDK 6.16.0
 
-Every comparison is made against `AcknowledgedSnapshot` — the last DLsite state the user marked applied or ignored. Network/parser failures never replace acknowledged/current snapshots and never clear an existing pending update.
+ビルド・テストには.NET 8 SDKも使用します。
 
-The first successful observation creates a baseline and means **監視開始**, not "latest version confirmed".
+## 注意事項
 
-## Build
+このプラグインは、ローカルにインストールされているゲーム本体の厳密なバージョン番号を判定するものではありません。
 
-See [BUILD.md](BUILD.md).
+DLsite側の`更新情報`と`ファイル容量`を監視し、最後にユーザーが確認済みとした配布状態との差分を検出します。
 
-## Validation status
+v0.1.0では次の機能は対象外です。
 
-Version **0.1.0** has completed the Windows build/test gate, all staged Playnite runtime gates through the full 33-game library, Playnite Toolbox packaging, and `.pext` installation validation. The release package SHA-256 is recorded in `RELEASE_STATUS.md`.
+- 自動ダウンロード
+- 自動パッチ適用
+- ローカルEXEのバージョン解析
+- ハッシュ比較
+- 起動時の自動チェック
+- DLsite以外のストア対応
 
-See `RELEASE_STATUS.md` for the final release record and `RELEASE_CANDIDATE_STATUS.md` for the preceding RC record.
+## ビルド
 
-## Validation entry points
+詳しくは [BUILD.md](BUILD.md) を参照してください。
 
-- `tools/Validate-Build.ps1` — mandatory restore/test/build/payload-validation gate on Windows
-- `tools/Validate-Build.cmd` — CMD wrapper for the same gate
-- `tools/Install-Dev.ps1` — development install with backup-before-replace behavior
-- `docs/SMOKE_TEST.md` — staged Playnite runtime validation
-- `RELEASE_STATUS.md` — final v0.1.0 validation and release record
-- `RELEASE_CANDIDATE_STATUS.md` — preceding release-candidate record and packaging instructions
-- `tools/Package-Release.ps1` / `.cmd` — package the already-validated payload with Playnite Toolbox
-- `MILESTONE3_STATUS.md` — previous verification milestone
-- `MILESTONE2_STATUS.md` — previous milestone record
+Windowsでは、リポジトリのルートから次を実行すると、テスト・ビルド・成果物検査をまとめて行えます。
+
+```powershell
+.\tools\Validate-Build.ps1
+```
+
+または:
+
+```cmd
+tools\Validate-Build.cmd
+```
+
+## テスト状況
+
+v0.1.0では、以下の検証を完了しています。
+
+- Core自動テスト: **63ケース PASS**
+- `.NET Framework 4.6.2`向けPlayniteプラグインビルド: **PASS**
+- DLsiteリンク診断: **33 / 33 正常**
+- 初回ベースライン作成: **PASS**
+- 同一状態の再チェック: **PASS**
+- 一時的な通信失敗後の状態保持: **PASS**
+- 小規模チェック: **PASS**
+- 33作品の全ライブラリチェック: **PASS**
+- `.pext`パッケージのインストール試験: **PASS**
+
+詳細は [RELEASE_STATUS.md](RELEASE_STATUS.md) を参照してください。
+
+## 開発者向け資料
+
+- [BUILD.md](BUILD.md) — ビルド・検証手順
+- [IMPLEMENTATION_NOTES.md](IMPLEMENTATION_NOTES.md) — 実装上の重要な設計ルール
+- [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md) — Playnite実機スモークテスト
+- [RELEASE_STATUS.md](RELEASE_STATUS.md) — v0.1.0の最終検証記録
+
+## 配布について
+
+`.pext`はこのリポジトリのソースツリーには含めません。配布用パッケージはGitHub Releasesなどで別途公開する想定です。
+
+## ライセンス
+
+現時点ではライセンスを設定していません。
