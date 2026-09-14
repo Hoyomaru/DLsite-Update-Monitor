@@ -1,8 +1,7 @@
 name: ソースツリー初期化
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -11,40 +10,4 @@ jobs:
   bootstrap:
     runs-on: ubuntu-latest
     steps:
-      - name: リポジトリを取得
-        uses: actions/checkout@v4
-
-      - name: 検証済みソースを復元
-        shell: bash
-        run: |
-          set -euo pipefail
-          cat _bootstrap/source.part* > /tmp/DLsiteUpdateMonitor-v0.1.0-source.zip
-          echo "63a9b55aaa21f74fedb49bd5dc94fbcf2114ec629b5fedbe78af9645fcfe3f2a  /tmp/DLsiteUpdateMonitor-v0.1.0-source.zip" | sha256sum -c -
-          rm -rf /tmp/dlum-source
-          mkdir -p /tmp/dlum-source
-          unzip -q /tmp/DLsiteUpdateMonitor-v0.1.0-source.zip -d /tmp/dlum-source
-          cp -a /tmp/dlum-source/DLsiteUpdateMonitor_m3/. ./
-          rm -rf _bootstrap
-          rm -f .github/workflows/bootstrap-source.yml
-          rm -f MILESTONE2_STATUS.md MILESTONE3_STATUS.md MILESTONE3_1_STATUS.md MILESTONE3_2_STATUS.md RELEASE_CANDIDATE_STATUS.md
-          cat > .gitignore <<'EOF'
-          bin/
-          obj/
-          artifacts/
-          TestResults/
-          .vs/
-          *.user
-          *.suo
-          *.nupkg
-          *.pext
-          EOF
-
-      - name: ソースをコミット
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "Hoyomaru"
-          git config user.email "155284954+Hoyomaru@users.noreply.github.com"
-          git add -A
-          git commit -m "DLsite Update Monitor v0.1.0 ソースを追加"
-          git push
+      - run: echo "分割データ準備中"
