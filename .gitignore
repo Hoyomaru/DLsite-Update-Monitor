@@ -1,0 +1,28 @@
+# Visual Studio / .NET
+.vs/
+**/bin/
+**/obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Test / validation outputs
+TestResults/
+**/TestResults/
+artifacts/
+
+# IDEs
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local state / logs
+*.log
+tracking.json
+tracking.backup.json
+*.corrupt-*

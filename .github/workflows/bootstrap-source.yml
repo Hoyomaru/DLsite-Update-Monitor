@@ -1,0 +1,39 @@
+name: Bootstrap source tree
+
+on:
+  push:
+    paths:
+      - '_bootstrap/DLsiteUpdateMonitor-v0.1.0-source.zip'
+
+permissions:
+  contents: write
+
+jobs:
+  unpack-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Expand validated source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp README.md /tmp/README.md
+          rm -rf /tmp/dlum-source
+          mkdir -p /tmp/dlum-source
+          unzip -q _bootstrap/DLsiteUpdateMonitor-v0.1.0-source.zip -d /tmp/dlum-source
+          cp -a /tmp/dlum-source/DLsiteUpdateMonitor_m3/. ./
+          cp /tmp/README.md README.md
+          rm -rf _bootstrap
+          rm -f .github/workflows/bootstrap-source.yml
+
+      - name: Commit expanded source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Add DLsite Update Monitor v0.1.0 source tree'
+          git push
