@@ -1,22 +1,22 @@
-# Build and validation
+# ビルドと検証
 
-## Supported target
+## 対象環境
 
-- Playnite stable: 10.56
-- Plugin target: .NET Framework 4.6.2
-- PlayniteSDK package: 6.16.0
-- Core test target: .NET 8.0
+- Playnite安定版: 10.56
+- プラグイン対象: .NET Framework 4.6.2
+- PlayniteSDK: 6.16.0
+- Coreテスト対象: .NET 8.0
 
-The plugin deliberately references the Playnite-provided runtime copies of AngleSharp 0.9.9 and Newtonsoft.Json 10.0.3 instead of shipping competing copies.
+プラグインでは、Playnite本体が提供する`AngleSharp 0.9.9`と`Newtonsoft.Json 10.0.3`を利用します。拡張機能側へ競合するDLLを同梱しない構成です。
 
-## Prerequisites on Windows
+## Windowsで必要なもの
 
-1. Visual Studio 2022 Build Tools or Visual Studio 2022
+1. Visual Studio 2022 Build Tools または Visual Studio 2022
 2. .NET Framework 4.6.2 Developer/Targeting Pack
 3. .NET 8 SDK
-4. Playnite 10.56 for runtime testing
+4. 実機確認用のPlaynite 10.56
 
-## Restore and run Core tests
+## Coreテストの復元と実行
 
 ```powershell
 cd <repository-root>
@@ -24,21 +24,21 @@ dotnet restore .\DLsiteUpdateMonitor.sln
 dotnet test .\tests\DLsiteUpdateMonitor.Core.Tests\DLsiteUpdateMonitor.Core.Tests.csproj -c Release
 ```
 
-All tests must pass before building/installing the plugin.
+プラグインをビルド・インストールする前に、すべてのCoreテストが成功することを確認してください。
 
-## Build plugin
+## プラグインのビルド
 
 ```powershell
 dotnet build .\src\DLsiteUpdateMonitor.Plugin\DLsiteUpdateMonitor.Plugin.csproj -c Release
 ```
 
-Expected output directory:
+出力先:
 
 ```text
 src\DLsiteUpdateMonitor.Plugin\bin\Release\
 ```
 
-It must contain at least:
+少なくとも次のファイルが必要です。
 
 ```text
 DLsiteUpdateMonitor.dll
@@ -46,74 +46,100 @@ DLsiteUpdateMonitor.Core.dll
 extension.yaml
 ```
 
-Do not add private copies of `Playnite.SDK.dll`, `AngleSharp.dll`, or `Newtonsoft.Json.dll` to the extension package unless the dependency strategy is deliberately changed and retested.
+依存関係の方針を明示的に変更して再検証しない限り、`Playnite.SDK.dll`、`AngleSharp.dll`、`Newtonsoft.Json.dll`を拡張機能へ独自同梱しないでください。
 
-## Development install
+## 開発用インストール
 
-Copy the Release output into a dedicated Playnite extension folder, for example:
+Release出力を専用のPlaynite拡張機能フォルダへ配置します。例:
 
 ```text
 %APPDATA%\Playnite\Extensions\DLsiteUpdateMonitor\
 ```
 
-Restart Playnite, then confirm the plugin appears under Add-ons and the `DLsite Update Monitor` menus are present.
+Playniteを再起動し、アドオン一覧にプラグインが表示され、`DLsite Update Monitor`のメニューが利用できることを確認してください。
 
-## First runtime validation order
-
-Use a disposable Playnite backup/profile first.
-
-1. Run `DLsiteリンク診断` only. Confirm no metadata is modified.
-2. Pick one game with a known DLsite link and run `今すぐ確認`.
-3. Confirm `tracking.json` is created in the plugin user-data directory.
-4. Confirm first observation is treated as baseline/監視開始, with no update tag.
-5. Repeat the same game. Confirm no update is detected.
-6. Test an intentionally malformed DLsite link. Confirm LinkError does not erase an existing pending state.
-7. Only after these pass, run a small batch (5–10 games).
-8. Only after the small batch passes, run the full library.
-
-## Packaging
-
-After `tools\Validate-Build.cmd` passes and `docs\SMOKE_TEST.md` is completed, package the **already validated** `artifacts\plugin` folder with Playnite Toolbox. Do not rebuild between the successful runtime smoke test and packaging.
-
-```powershell
-.\tools\Package-Release.ps1 -ConfirmRuntimeValidated
-```
-
-or:
-
-```cmd
-tools\Package-Release.cmd
-```
-
-The script uses the official `Toolbox.exe pack <extensionfolder> <targetfolder>` flow, writes the `.pext` to `artifacts\release`, and generates `SHA256SUMS.txt` plus `RELEASE-SUMMARY.txt`.
-
-If Toolbox cannot be detected automatically, pass `-ToolboxPath` explicitly.
-
-## Optional cross-platform static precheck
-
-If Python 3 is available, the repository also contains a lightweight structural check that can run before the real C# build:
-
-```powershell
-python .\tools\Static-Validate.py
-```
-
-It validates project/XAML XML, project-reference paths, extension manifest invariants, C# delimiter/string/comment boundaries, pinned dependency versions, and a static xUnit case estimate. It is **not** a replacement for `dotnet test`.
-
-## One-command validation on Windows
-
-From PowerShell at the repository root:
-
-```powershell
-.\tools\Validate-Build.ps1
-```
-
-The script verifies prerequisites, restores packages, runs the **63 Core test cases**, builds the net462 Playnite plugin, validates the extension payload, and writes it to `artifacts\plugin`. It deliberately fails if private copies of `Playnite.SDK.dll`, `AngleSharp.dll`, or `Newtonsoft.Json.dll` appear in the payload.
-
-After that passes, follow `docs\SMOKE_TEST.md`. For a disposable development install you can use:
+`tools\Install-Dev.ps1`を使う場合は、既存の開発用拡張フォルダをバックアップしてから置き換えます。
 
 ```powershell
 .\tools\Install-Dev.ps1 -WhatIf
 .\tools\Install-Dev.ps1
 ```
 
-`Install-Dev.ps1` backs up an existing development extension folder before replacing it.
+## 初回の実機検証順序
+
+最初はPlayniteのバックアップ、または検証用プロファイルを使用してください。
+
+1. `DLsiteリンク診断`だけを実行し、ゲームのメタデータが変更されないことを確認します。
+2. DLsiteリンクが正しいゲームを1本選び、`今すぐ確認`を実行します。
+3. プラグインのユーザーデータフォルダに`tracking.json`が作成されることを確認します。
+4. 初回取得が「監視開始」のベースラインとして扱われ、更新タグが付かないことを確認します。
+5. 同じゲームをもう一度確認し、「変更なし」になることを確認します。
+6. エラー時に既存ベースラインや保留状態が消えないことを確認します。
+7. ここまで成功したら5〜10作品で小規模チェックを行います。
+8. 小規模チェックが成功してから全ライブラリを確認します。
+
+詳細は [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md) を参照してください。
+
+## Windowsでの一括検証
+
+リポジトリのルートから次を実行します。
+
+```powershell
+.\tools\Validate-Build.ps1
+```
+
+または:
+
+```cmd
+tools\Validate-Build.cmd
+```
+
+このスクリプトは以下を確認します。
+
+- 必要なSDK・Targeting Pack
+- NuGetパッケージの復元
+- **63件のCoreテスト**
+- `net462`向けPlayniteプラグインのビルド
+- 必須成果物
+- `Playnite.SDK.dll`、`AngleSharp.dll`、`Newtonsoft.Json.dll`が誤って同梱されていないこと
+- `extension.yaml`の基本整合性
+
+成功した成果物は`artifacts\plugin`へ出力されます。
+
+## 任意の静的事前検証
+
+Python 3がある場合は、C#の実ビルド前に軽量な構造チェックを実行できます。
+
+```powershell
+python .\tools\Static-Validate.py
+```
+
+主に以下を確認します。
+
+- csproj / XAMLのXML構造
+- ProjectReferenceのパス
+- `extension.yaml`の基本条件
+- C#の括弧・文字列・コメント境界
+- 固定している依存パッケージのバージョン
+- xUnitテストケース数の静的推定
+- `net462`向け`System.Net.Http`参照
+
+これは`dotnet test`の代替ではありません。
+
+## `.pext`の作成
+
+`tools\Validate-Build.cmd`が成功し、[docs/SMOKE_TEST.md](docs/SMOKE_TEST.md)の実機検証が完了したあと、**実機で検証した`artifacts\plugin`をそのまま**Playnite Toolboxでパッケージします。スモークテスト成功後からパッケージ作成までの間に、別バイナリへ再ビルドしないでください。
+
+```powershell
+.\tools\Package-Release.ps1 -ConfirmRuntimeValidated
+```
+
+または:
+
+```cmd
+tools\Package-Release.cmd
+```
+
+スクリプトはPlaynite公式の`Toolbox.exe pack <extensionfolder> <targetfolder>`を使用し、`artifacts\release`に`.pext`を作成します。あわせて`SHA256SUMS.txt`と`RELEASE-SUMMARY.txt`を生成します。
+
+Toolboxを自動検出できない場合は、`-ToolboxPath`で`Toolbox.exe`を指定してください。
