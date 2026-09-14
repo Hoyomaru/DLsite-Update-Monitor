@@ -1,8 +1,12 @@
 # DLsite Update Monitor — 開発・保守ガイド
 
-この文書は、DLsite Update Monitorの開発継続、保守、コードレビュー、AIへの引き継ぎを目的とした開発者向け資料です。
+この文書は、DLsite Update Monitor の開発継続、保守、コードレビュー、AIへの引き継ぎにおける**開発者向け正本**です。
 
-今後の変更では、まずこのファイル、[README.md](README.md)、[CHANGELOG.md](CHANGELOG.md)、最新コードを確認してください。仕様の最終判断は**現在の実装とテスト**を基準にし、文書とコードが食い違う場合は、動作しているコードを勝手に文書へ合わせず差異を調査してください。
+今後の変更では、最初に [README.md](README.md)、この `DEVELOPMENT.md`、[CHANGELOG.md](CHANGELOG.md)、対象コードと関連テストを確認してください。内部構造の図解は [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)、ビルドは [BUILD.md](BUILD.md)、リリース工程は [docs/RELEASE.md](docs/RELEASE.md)、実機確認は [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md) を参照します。
+
+仕様の最終判断は**現在動いている実装とテスト**を基準にします。文書とコードが食い違う場合、文書へ合わせるために動いているコードを勝手に変更せず、まず差異を調査してください。
+
+---
 
 ## 1. 現在の状態
 
@@ -14,47 +18,59 @@
 | Playnite | 10.56で実機検証済み |
 | Plugin target | .NET Framework 4.6.2 |
 | Core target | .NET Framework 4.6.2 / .NET 8.0 |
-| Core tests | 63ケース PASS（v0.1.0リリース検証記録） |
+| Core自動テスト | 63ケース PASS（v0.1.0検証記録） |
 | 実機Smoke Test | Gate A〜F PASS |
 | 全ライブラリ実機確認 | DLsiteリンク登録済み33作品でPASS |
-| `.pext`インストール | PASS |
+| `.pext`作成・インストール | PASS |
 | GitHub Release | 2026-09-14確認時点で未作成 |
-| Git tag | 公開Tagを確認できていない |
+| 公開Git tag | 確認できていない |
 | GitHub Actions / CI | 未導入 |
 | License | 未設定 |
 
-詳細な実機検証結果は [RELEASE_STATUS.md](RELEASE_STATUS.md)、手順は [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md) を参照してください。
+v0.1.0の実機検証証跡は [RELEASE_STATUS.md](RELEASE_STATUS.md) を正とします。
+
+---
 
 ## 2. プロジェクトの責務
 
-本プロジェクトは、Playniteで管理されるゲームの`Game.Links`からDLsite作品URLを見つけ、DLsite商品ページの配布状態を監視します。
+本プロジェクトは、Playniteで管理されるゲームの `Game.Links` からDLsite作品URLを解決し、DLsite商品ページの配布状態を監視するGenericPluginです。
 
 v0.1.0で比較する信号は次の2つだけです。
 
 1. `更新情報`
 2. `ファイル容量`
 
-ローカルにインストールされたゲーム本体のVersion、EXE情報、ファイルハッシュ、パッチ適用状態は判定しません。
+次は判定しません。
 
-### 重要な考え方
+- ローカルにインストールされたゲーム本体のVersion
+- EXEのFile Version
+- ローカルファイルハッシュ
+- パッチ適用状態
+- DLsite以外のストア
 
-「最後に取得した状態」と比較するのではありません。
+### 比較基準
 
-比較基準は常に、ユーザーが最後に確認済みとした`AcknowledgedSnapshot`です。新たに取得した候補は`CurrentSnapshot`となり、差分がある間は保留状態として残ります。
+比較対象は常に、ユーザーが最後に「適用済み」または「無視」として確定した `AcknowledgedSnapshot` と、新しく取得したCandidateです。
+
+**直前に取得した結果を自動で次回の基準へ進めてはいけません。**
 
 ```text
 AcknowledgedSnapshot
         │
         │ compare
         ▼
-Candidate / CurrentSnapshot
+Candidate
         │
         ├─ 同じ          → Clean
         ├─ 更新情報差分   → PendingUpdateInfo
         ├─ 容量差分       → PendingFileChange
         ├─ 両方差分       → PendingUpdateAndFileChange
-        └─ 安全に比較不能 → 既存の監視状態を変更しない
+        └─ 安全に比較不能 → 既存状態を進めない
 ```
+
+初回の正常観測は更新ではなくBaseline作成です。
+
+---
 
 ## 3. リポジトリ構成
 
@@ -62,24 +78,24 @@ Candidate / CurrentSnapshot
 DLsite-Update-Monitor/
 ├─ src/
 │  ├─ DLsiteUpdateMonitor.Core/
-│  │  ├─ Http/           # DLsiteへのHTTP GET、間隔、timeout、retry
-│  │  ├─ Models/         # Snapshot、状態、追跡DBモデル
-│  │  ├─ Parsing/        # HTML解析、更新情報/容量の正規化
+│  │  ├─ Http/           # DLsiteへのHTTP GET、interval、timeout、retry
+│  │  ├─ Models/         # Snapshot、状態、Tracking DB
+│  │  ├─ Parsing/        # HTML parser、更新情報/容量の正規化
 │  │  ├─ Persistence/    # tracking.jsonの安全な読み書き
-│  │  └─ Services/       # 比較、状態機械、キャッシュ、作品ID解決
+│  │  └─ Services/       # Resolver、比較、状態機械、cache、check service
 │  └─ DLsiteUpdateMonitor.Plugin/
-│     ├─ DLsiteUpdateMonitorPlugin.cs  # Playnite統合のオーケストレーション
-│     ├─ PlayniteTagService.cs         # プラグイン管理タグ
-│     ├─ PluginSettings.cs             # 設定値・検証
-│     ├─ PluginSettingsView.xaml       # 設定UI
-│     └─ extension.yaml                # Playnite extension metadata
+│     ├─ DLsiteUpdateMonitorPlugin.cs
+│     ├─ PlayniteTagService.cs
+│     ├─ PluginSettings.cs
+│     ├─ PluginSettingsView.xaml
+│     └─ extension.yaml
 ├─ tests/
-│  └─ DLsiteUpdateMonitor.Core.Tests/  # Core自動テスト
+│  └─ DLsiteUpdateMonitor.Core.Tests/
 ├─ tools/
-│  ├─ Validate-Build.ps1               # restore/test/build/payload検査
-│  ├─ Install-Dev.ps1                  # 開発用配置
-│  ├─ Package-Release.ps1              # 検証済みpayloadの.pext化
-│  └─ Static-Validate.py               # 任意の静的事前検証
+│  ├─ Validate-Build.ps1
+│  ├─ Install-Dev.ps1
+│  ├─ Package-Release.ps1
+│  └─ Static-Validate.py
 ├─ docs/
 │  ├─ ARCHITECTURE.md
 │  ├─ RELEASE.md
@@ -89,129 +105,126 @@ DLsite-Update-Monitor/
 ├─ DEVELOPMENT.md
 ├─ CHANGELOG.md
 ├─ BUILD.md
-├─ IMPLEMENTATION_NOTES.md
+├─ IMPLEMENTATION_NOTES.md   # 旧リンク互換の安全設計インデックス
 └─ RELEASE_STATUS.md
 ```
 
-## 4. アーキテクチャ概要
+`IMPLEMENTATION_NOTES.md` は重複本文を持たない互換インデックスです。開発上の正本はこの `DEVELOPMENT.md` と `docs/ARCHITECTURE.md` です。
 
-詳細は [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) を参照してください。
+---
+
+## 4. アーキテクチャ
 
 主要レイヤーは次の3つです。
 
-### Playnite統合層
+### Playnite統合層 — `DLsiteUpdateMonitor.Plugin`
 
-`DLsiteUpdateMonitor.Plugin`
+- GenericPlugin lifecycle
+- main menu / game context menu
+- settings UI
+- global progress / cancel
+- Game選択
+- Core serviceの組み立て
+- 保存タイミング
+- Playnite tag同期
+- 状態変更操作の排他制御
 
-- Playniteメニュー
-- 設定UI
-- グローバル進捗
-- ゲーム選択
-- 状態変更操作
-- タグ同期
-- Coreサービスの組み立て
+### Coreドメイン層 — `DLsiteUpdateMonitor.Core`
 
-### Coreドメイン層
-
-`DLsiteUpdateMonitor.Core`
-
-- URLから作品ID解決
-- HTTP取得
+- DLsite URL / ProductId解決
+- HTTP GET
 - HTML解析
 - 正規化
-- Snapshot検証
-- Snapshot比較
-- 状態遷移
-- キャッシュ
-- 永続化
+- RemoteSnapshot検証・fingerprint・比較
+- Tracking state machine
+- memory cache
+- Tracking JSON persistence
 
-CoreはPlaynite SDKへ依存せず、自動テスト可能な構成です。
+CoreはPlaynite SDKへ依存せず、.NET 8のテストから検証できる構成です。
 
-### 永続化層
+### 永続化層 — `TrackingRepository`
 
-`TrackingRepository`
+Playnite SDKの `GetPluginUserDataPath()` が返すディレクトリへ追跡JSONを保存します。絶対パスは固定していません。
 
-Playnite SDKが返すプラグインユーザーデータディレクトリに`tracking.json`等を保存します。絶対パスはコードへ固定しません。
+詳細なデータフロー・図は [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) を参照してください。
+
+---
 
 ## 5. 主要コードと責務
 
 ### `DLsiteUpdateMonitorPlugin`
 
-**責務**
+責務:
 
 - Playnite APIとの接続
-- 各Coreサービスの構築
-- メニューの提供
-- バッチ処理
-- 保存タイミング
-- タグ同期
-- 状態変更操作の排他制御
+- Runtime service構築
+- menu提供
+- batch check
+- saveタイミング
+- tag同期
+- `適用済み` / `無視` / `監視状態をリセット`
+- `operationLock`による排他
 
-**重要な副作用**
+重要な副作用:
 
 - `tracking.json`保存
-- Playniteタグ更新
-- ダイアログ表示
+- Playnite tag更新
+- dialog表示
 - DLsiteページをOS既定ブラウザで開く
 
-**排他**
-
-`operationLock`を更新チェックと`適用済み` / `無視` / `監視状態をリセット`で共有します。同時に追跡状態を変更しないことが重要です。
+`GlobalProgressResult.Error` がある場合はタグ反映を中止します。途中保存・最終保存を含む処理例外を「成功したように見せる」変更をしないでください。
 
 ### `DlsiteLinkResolver`
 
-**入力**: Playnite `Game.Links`のURL列
+入力: Playnite `Game.Links` のURL列。
 
-**出力**: `LinkResolutionResult`
+ルール:
 
-**ルール**
-
-- ホストは`dlsite.com`または`*.dlsite.com`だけを受け入れる
-- `/product_id/<ID>`からのみ作品IDを取得
-- 現在の作品ID形式は英字2文字 + 6桁または8桁の数字
-- 1ゲームに複数の異なる作品IDがある場合は`Ambiguous`
-- DLsiteホストなのに対応IDを取得できなければ`Invalid`
+- hostは正確に `dlsite.com` または `*.dlsite.com`
+- ProductIdは `/product_id/<ID>` からのみ抽出
+- v0.1.0形式は英字2文字 + 6桁または8桁数字
+- 異なる複数IDがあれば `Ambiguous`
+- DLsite hostなのに対応IDがなければ `Invalid`
 
 ### `DlsiteHttpClient`
 
-**入力**: DLsite商品URL
-
-**出力**: `DlsiteFetchResult`
-
-**主な仕様**
-
 - HTTP GETのみ
-- 共有クライアント
-- `fetchGate`で取得を直列化
-- 最小リクエスト開始間隔を維持
-- 1試行ごとのtimeout
+- shared `HttpClient`
+- `fetchGate`でDLsite取得を直列化
+- request開始間隔を維持
+- 各試行にtimeout
+- cancellation対応
 - retry対象を限定
-- `Retry-After`対応
-- Cancellation対応
+- `Retry-After`を固定delayより優先
 
 ### `DlsitePageParser`
 
-**入力**: HTML、source URL、resolved URL、期待作品ID、取得時刻
-
-**出力**: `DlsiteParseResult`
-
-**重要なDOM契約**
+重要なDOM契約:
 
 - タイトル: `#work_name`
-- 商品情報テーブル: `#work_outline`
-- 利用不可ページ: `.error_box_work`
+- 商品情報: `#work_outline`
+- HTTP 200利用不可ページ: `.error_box_work`
 
-`更新情報`の行が存在しない場合は`Missing`として有効な観測です。行があるのに内容を安全に読めない場合は`Unparsed`です。
+`更新情報`:
 
-`ファイル容量`は現在の比較に必須で、Parseできなければ候補Snapshotは比較対象にできません。
+- row自体がない → `Missing`
+- rowがあるが空/解析不能 → `Unparsed`
+- text抽出はまず `td` の**direct text node**を優先し、direct textがない場合だけ `TextContent`へfallbackする
+- nested label/link等を更新信号へ不用意に混ぜないための意図的な実装
+
+`ファイル容量`:
+
+- 現行比較では必須
+- parse不能なら候補Snapshotはcomparison eligibleではない
 
 ### `UpdateInfoNormalizer`
 
 - Unicode NFKC
-- 改行統一
-- 水平空白の正規化
-- `20xx年m月d日`や区切り日付を`yyyy-MM-dd`へ正規化
+- CRLF/CRをLFへ統一
+- 水平空白正規化
+- 20xx年の日付を `yyyy-MM-dd` へ正規化
 - 過剰な空行を圧縮
+- raw値も保持
 
 ### `FileSizeNormalizer`
 
@@ -219,131 +232,92 @@ Playnite SDKが返すプラグインユーザーデータディレクトリに`t
 - 1024基準
 - byteへ変換
 - `MidpointRounding.AwayFromZero`
-- 比較にはbyte値を使用
+- raw値とnormalized byte表現を保持
 
 ### `SnapshotValidator`
 
-比較可能Snapshotの最低条件を定義します。
+comparison eligible最低条件:
 
-- ProductIdが存在
-- FileSizeが`Parsed`
-- UpdateInfoがnullではない
-- UpdateInfoが`Unparsed`ではない
+- ProductIdあり
+- FileSizeが `Parsed`
+- UpdateInfoがnullでない
+- UpdateInfoが `Unparsed` でない
 
 ### `SnapshotFingerprint`
 
-次の値からSHA-256を計算します。
+SHA-256対象:
 
 - Snapshot schema version
-- 大文字化ProductId
-- UpdateInfoの状態 + normalized値
-- FileSizeの状態 + byte値
+- uppercase ProductId
+- UpdateInfo state + normalized value
+- FileSize state + byte value
 
-取得時刻、商品名、URLはFingerprintへ含めません。
+取得時刻、商品名、URLはFingerprintに含めません。
 
 ### `SnapshotComparer`
 
-副作用なしの比較器です。
+副作用を持たない比較器です。
 
-**重要ルール**
+- candidateが比較不能 → `Indeterminate`
+- acknowledgedがnull → `BaselineCreated`
+- ProductId不一致 → `IdentityMismatch`
+- UpdateInfo `Missing → Parsed` → Changed
+- UpdateInfo `Parsed → Missing` → Indeterminate
+- `Unparsed`を含む → Indeterminate
+- FileSizeは双方Parsedのときだけ比較
 
-- 候補が比較不能なら`Indeterminate`
-- acknowledgedがnullなら`BaselineCreated`
-- ProductId不一致なら`IdentityMismatch`
-- 更新情報 `Missing → Parsed` はChanged
-- 更新情報 `Parsed → Missing` はIndeterminate
-- `Unparsed`を含む更新情報比較はIndeterminate
-- FileSizeは双方`Parsed`でなければIndeterminate
+`Indeterminate` / `IdentityMismatch` の `TargetState` はnullです。呼び出し側は「MonitoringStateを変更しない」という意味として扱います。
 
 ### `TrackingStateMachine`
 
-Snapshot比較結果を`GameTrackingRecord`へ反映します。
-
-- 初回正常取得 → acknowledged/currentを同じSnapshotにして`Clean`
-- Changed → currentだけ更新しPending stateへ
+- Baseline → acknowledged/currentをcandidate cloneへ、`Clean`
+- Changed → currentだけ更新しPendingへ
 - NoChange → current更新、`Clean`
 - Indeterminate / IdentityMismatch → acknowledged/current/MonitoringStateを進めない
-- check失敗 → health/errorだけ更新し、既知SnapshotとMonitoringStateを維持
-- Acknowledge → currentをacknowledgedへ複製、`Clean`
-- Reset → Snapshotと作品識別情報を消し`Uninitialized`
+- failure → health/errorを更新するが、既知Snapshot/MonitoringStateを維持
+- Acknowledge → currentをacknowledgedへclone、`Clean`
+- AppliedとIgnoredはSnapshot遷移は同じだがHistory eventを区別
+- Reset → SnapshotだけでなくRegisteredUrl / RequestedProductId / ResolvedUrl / ResolvedProductId等もclear
+
+### `UpdateCheckService`
+
+- HTTP前に既追跡ProductIdと現在LinkのProductIdを照合
+- 初回Baseline前でもrequested/resolved ProductIdを照合
+- healthyなRemoteSnapshotだけをcacheへ登録
+- remote observationのhealthy/degradedと、各Game固有のcomparison healthを分離
+- 1ゲームの壊れた旧Snapshotで、別Gameが使える正常RemoteSnapshotの再利用を阻害しない
 
 ### `SnapshotCache`
 
-プロセス内メモリキャッシュです。
-
-- ProductIdをキーにする
-- TTLあり
-- Put/Get時にSnapshotをClone
-- Playnite再起動後には残らない
+- process memoryのみ
+- key: ProductId
+- TTLあり（default 24h）
+- Put/GetでSnapshotをclone
+- Playnite再起動で消える
+- cache hit時もRemoteSnapshotの `FetchedAtUtc` は**元のremote取得時刻を保持**する
+- cacheのTTL判定に使う `StoredAtUtc` は別管理
 
 ### `TrackingRepository`
 
-`tracking.json`の耐障害性を担当します。
-
-詳細は「永続化」を参照してください。
+詳細は「永続化」を参照。
 
 ### `PlayniteTagService`
 
-プラグイン自身の`[DLsite更新] `接頭辞のタグだけを扱います。ユーザーの他タグは削除しません。
+自分の `[DLsite更新] ` prefixのtagだけを操作します。ユーザーの無関係なtagへ触れません。
 
-## 6. 処理フロー
+---
 
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant P as Playnite Plugin
-    participant R as LinkResolver
-    participant S as UpdateCheckService
-    participant H as DlsiteHttpClient
-    participant D as DlsitePageParser
-    participant M as TrackingStateMachine
-    participant Repo as TrackingRepository
-
-    U->>P: 今すぐ確認
-    P->>R: Game.Links
-    R-->>P: ProductId / error
-    P->>S: CheckAsync(record,target)
-    S->>S: 既追跡ProductIdとの一致確認
-    S->>H: GET 商品ページ
-    H-->>S: FetchResult
-    S->>D: Parse HTML
-    D-->>S: Snapshot / parse health
-    S->>S: requested/resolved ProductId確認
-    S->>M: ApplySuccessfulSnapshot
-    M-->>S: ComparisonResult
-    S-->>P: ProductCheckResult
-    P->>Repo: Save
-    P->>P: plugin-owned tagsを同期
-```
-
-## 7. 状態モデル
+## 6. 状態モデル
 
 ### `MonitoringState`
 
-```mermaid
-stateDiagram-v2
-    [*] --> Uninitialized
-    Uninitialized --> Clean: 初回正常取得 / BaselineCreated
-    Clean --> PendingUpdateInfo: 更新情報の差分
-    Clean --> PendingFileChange: ファイル容量の差分
-    Clean --> PendingUpdateAndFileChange: 両方差分
-    PendingUpdateInfo --> Clean: Applied / Ignored / baselineへ戻る
-    PendingFileChange --> Clean: Applied / Ignored / baselineへ戻る
-    PendingUpdateAndFileChange --> Clean: Applied / Ignored / baselineへ戻る
-    PendingUpdateInfo --> PendingUpdateInfo: 未確認のまま再チェック
-    PendingFileChange --> PendingFileChange: 未確認のまま再チェック
-    PendingUpdateAndFileChange --> PendingUpdateAndFileChange: 未確認のまま再チェック
-    Clean --> Uninitialized: Reset
-    PendingUpdateInfo --> Uninitialized: Reset
-    PendingFileChange --> Uninitialized: Reset
-    PendingUpdateAndFileChange --> Uninitialized: Reset
-```
-
-実際にはPending中に候補の内容が再度変化すると、`CurrentSnapshot`は新しい候補へ更新され、履歴に`ChangeUpdated`が記録されます。
+- `Uninitialized`
+- `Clean`
+- `PendingUpdateInfo`
+- `PendingFileChange`
+- `PendingUpdateAndFileChange`
 
 ### `CheckHealth`
-
-`MonitoringState`とは独立しています。
 
 - `NeverChecked`
 - `Healthy`
@@ -358,45 +332,100 @@ stateDiagram-v2
 - `LinkError`
 - `Cancelled`
 
-**重要:** Pending状態のゲームで次回チェックが`NetworkError`になっても、Pending状態は消しません。
+`MonitoringState` と `CheckHealth` は独立しています。
 
-## 8. データモデルと永続化
+例:
+
+```text
+MonitoringState = PendingUpdateInfo
+LastCheckHealth = RateLimited
+```
+
+これは「未処理更新は残っているが、直近checkは429だった」という有効な状態です。
+
+Pending中にDLsite側Candidateがさらに変化した場合、`CurrentSnapshot`は新しい安全なCandidateへ更新され、必要に応じて `ChangeUpdated` historyが追加されます。
+
+---
+
+## 7. Snapshotの意味
+
+### `AcknowledgedSnapshot`
+
+ユーザーが確認済みとした比較基準。Pending中は自動更新しません。
+
+### `CurrentSnapshot`
+
+最新の**安全に比較できた**Candidate。Pending中の追加変化では更新されることがあります。
+
+### `LastObservation`
+
+直近の観測。取得自体は成功したが比較不能なdegraded Snapshotも診断目的で保持される場合があります。
+
+`LastObservation` と `CurrentSnapshot` を同じ意味として扱わないでください。
+
+---
+
+## 8. 観測と比較の意味
+
+`ObservedField<T>`:
+
+```text
+Missing  = 項目が存在しないことを有効に観測
+Parsed   = 安全に解析済み
+Unparsed = 項目はあるが安全に解析不能
+```
+
+UpdateInfo:
+
+| Before | After | Result |
+|---|---|---|
+| Missing | Missing | Same |
+| Missing | Parsed | Changed |
+| Parsed | Parsed同値 | Same |
+| Parsed | Parsed差分 | Changed |
+| Parsed | Missing | Indeterminate |
+| Unparsedを含む | any | Indeterminate |
+
+FileSizeは双方 `Parsed` の場合だけbyte値を比較し、それ以外は `Indeterminate` です。
+
+---
+
+## 9. Product identity保護
+
+作品identityは次を区別します。
+
+1. `RegisteredUrl`
+2. `RequestedProductId`
+3. `ResolvedUrl`
+4. `ResolvedProductId`
+
+### Playnite Linkが別作品へ変わった場合
+
+既追跡ProductIdと現在LinkのProductIdが違えば、**HTTP通信前**に `LinkError` で停止します。
+
+旧Baselineは維持し、別作品へ切り替えるには明示的な `監視状態をリセット` を要求します。
+
+### DLsite側redirectで別作品になった場合
+
+`RedirectedToDifferentProduct` とし、初回であってもBaselineを作成しません。
+
+---
+
+## 10. 永続化
 
 ### `TrackingDatabase`
 
-現在のSchemaVersionは`1`です。
-
-```text
-TrackingDatabase
-├─ SchemaVersion
-├─ CreatedAtUtc
-├─ LastSavedAtUtc
-└─ Games: Dictionary<Guid, GameTrackingRecord>
-```
-
-### `GameTrackingRecord`
+現行 `SchemaVersion = 1`。
 
 主要フィールド:
 
-- `PlayniteGameId`
-- `RegisteredUrl`
-- `RequestedProductId`
-- `ResolvedUrl`
-- `ResolvedProductId`
-- `MonitoringState`
-- `LastCheckHealth`
-- `AcknowledgedSnapshot`
-- `CurrentSnapshot`
-- `LastObservation`
-- `FirstCheckedAtUtc`
-- `LastAttemptAtUtc`
-- `LastSuccessfulCheckAtUtc`
-- `LastError`
-- `History`
+- `CreatedAtUtc`
+- `LastSavedAtUtc`
+- `Games: Dictionary<Guid, GameTrackingRecord>`
+
+`GameTrackingRecord` はProduct identity、MonitoringState、CheckHealth、3種Snapshot、時刻、LastError、Historyを保持します。
 
 ### 保存ファイル
-
-保存先は`GetPluginUserDataPath()`が返すディレクトリです。
 
 ```text
 tracking.json
@@ -408,48 +437,31 @@ tracking.backup.json.corrupt-YYYYMMDD-HHmmss...
 
 ### 保存アルゴリズム
 
-1. `tracking.tmp`を新規作成
-2. UTF-8 BOMなしでJSONをWriteThrough
-3. writer/streamをflushし、`Flush(true)`
-4. `tracking.tmp`を即座に読み直してSchemaとJSONを検証
-5. primaryがあれば`File.Replace(temp, primary, backup)`を試す
-6. 非対応/IOエラー時はfallbackとしてprimary→backupをコピーしてからtempをprimaryへ移動
-7. primaryがなければtempをprimaryへ移動
+1. `tracking.tmp`へUTF-8 BOMなしでWriteThrough
+2. writer / streamをflushし `Flush(true)`
+3. tempを即座に再読込しJSONとSchemaを検証
+4. 検証成功後のみprimaryへ昇格
+5. 既存primaryがある場合はbackupを維持
+6. `File.Replace`非対応/IO error時のみfallback replace
 
-壊れたprimary/backupを検出した場合、次回保存前に`.corrupt-<timestamp>`へ移して保全します。
+壊れたprimary/backupを検出した場合、次回save前に `.corrupt-*` へ退避して保全します。
 
-### Schema互換性
+### load failure
 
-- Schema `< 1`: invalid
-- Schema `== 1`: 現行対応
-- Schema `> 1`: `UnsupportedTrackingSchemaException`
+- primary正常 → primary使用
+- primary破損 / backup正常 → backup使用 + warning
+- primary/backup両方破損 → new DB。ただし破損ファイルを次回save前に保全
+- Schema > current → `UnsupportedTrackingSchemaException`
 
-Plugin側は新しすぎるSchemaを検出すると`persistenceBlocked`になり、チェックと保存を無効化します。
+Plugin側は新しすぎるSchemaで `persistenceBlocked` となり、更新チェックと保存を停止します。
 
-**新Schemaを古いコードで上書きしてはいけません。**
+**未知Schemaを古い実装で上書きしないこと。**
 
-## 9. 外部通信
+---
 
-### Endpoint
+## 11. HTTP / Retry policy
 
-固定REST APIではなく、PlayniteのLinksへ登録されたDLsite商品ページURLへHTTP GETします。
-
-想定host:
-
-```text
-dlsite.com
-*.dlsite.com
-```
-
-### Method
-
-```text
-GET
-```
-
-### 認証
-
-DLsiteアカウント認証は行いません。
+固定REST APIではなく、Playnite Linkに登録されたDLsite商品URLへGETします。
 
 固定Cookie:
 
@@ -458,17 +470,18 @@ locale=ja_JP
 loginchecked=1
 ```
 
-これらはページ表示条件のための固定値であり、ユーザーのログインSession、Password、Access Tokenを保存する実装ではありません。
+これはユーザーのログインSession Credentialではありません。
 
-### Header
+既定値:
 
-実装上、User-AgentとAccept-Languageを付与します。
-
-### Retry policy
+- Request interval: 2秒
+- Timeout: 20秒
+- RetryCount: 2
+- 1回目retry delay: 2秒
+- 2回目以降: 5秒
 
 | Fetch status | Retry |
 |---|---|
-| Success | 不要 |
 | 429 RateLimited | する |
 | Timeout | する |
 | NetworkError | する |
@@ -477,344 +490,343 @@ loginchecked=1
 | 404 / 410 ProductUnavailable | しない |
 | Cancelled | しない |
 
-既定値:
+`Retry-After` が有効なら固定delayより優先します。
 
-- Request interval: 2秒
-- Timeout: 20秒
-- RetryCount: 2
-- 1回目のretry delay: 2秒
-- 2回目以降のdelay: 5秒
+---
 
-HTTP `Retry-After`が有効なら固定delayより優先します。
+## 12. Batch / 非同期 / 排他
 
-## 10. Queue / 非同期処理 / 排他
-
-永続的なQueueはありません。
-
-1回のチェック操作内でPlayniteゲーム一覧を順番に処理します。DLsite HTTP自体も`DlsiteHttpClient.fetchGate`で直列化されています。
+永続Queueはありません。1回の操作内でGameを順番に処理します。
 
 ### `operationLock`
 
-Pluginレベルの操作セマフォです。
-
-同時実行を禁止するもの:
+次を同時実行させません。
 
 - 更新チェック
 - 適用済み
 - 無視
 - 監視状態リセット
 
-これにより`tracking`辞書や`tracking.json`へ複数操作が同時変更を行うことを避けます。
+`tracking` dictionary / `tracking.json` の同時変更防止が目的です。
 
-### 同一ProductIdのバッチ内最適化
+### HTTP側
 
-同じバッチで複数のPlayniteゲームが同一ProductIdを参照する場合:
+さらに `DlsiteHttpClient.fetchGate` がRemote GETを直列化します。
 
-- 正常なリモート観測を再利用できれば、後続ゲームはHTTPを増やさずキャッシュ経由で比較
-- 最初のProduct-level取得そのものが失敗した場合は、同じバッチで同じProductIdを盲目的に再試行せず、その失敗を共有
+### 同一ProductIdのbatch内共有
 
-ゲーム固有の壊れた/古いacknowledged Snapshotが、別ゲームで使える正常なリモート観測を汚染しないよう分離しています。
+- healthy RemoteSnapshotがある → 後続Gameはcache経由でGame固有比較
+- Product-level取得自体が失敗 → 同batch内で同じProductIdを盲目的に再GETせずfailureを共有
 
-## 11. キャッシュ
+### 保存タイミング
 
-キャッシュは`SnapshotCache`のメモリ内Dictionaryです。
+- 10 Game処理ごと
+- batch終了時
 
-- key: ProductId
-- default TTL: 24時間
-- healthy parseだけを登録
-- Cloneして保存/取得
-- Playnite終了で消える
-- `キャッシュをクリア`で手動削除可能
+Playnite終了時にoperationが進行中なら、競合するshutdown saveを無理に行わずskipします。途中保存を優先する設計です。
 
-`全ゲームを今すぐ確認`はforce refresh、`キャッシュを利用して確認`はキャッシュ利用を許可します。
+---
 
-## 12. 絶対に壊してはいけない不変条件
+## 13. Settings
 
-ここは将来の実装変更で最も重要です。便利さ・速度・コード短縮を理由に弱体化しないでください。
+| Setting | Default | Range | 用途 |
+|---|---:|---:|---|
+| `RequestIntervalSeconds` | 2 | 1〜60 | HTTP開始間隔 |
+| `TimeoutSeconds` | 20 | 5〜120 | 1試行timeout |
+| `RetryCount` | 2 | 0〜5 | retry追加回数 |
+| `CacheHours` | 24 | 1〜168 | memory cache TTL |
+| `HistoryLimit` | 50 | 10〜500 | Game単位history上限 |
+| `EnableTags` | true | bool | Playnite tag同期 |
 
-1. **初回正常取得を更新扱いにしない。** 初回はBaseline作成のみ。
-2. **比較基準を最後の取得結果へ自動で進めない。** `AcknowledgedSnapshot`はユーザーが`適用済み`または`無視`するまで維持する。
-3. **HTTP/解析失敗でPending状態を消さない。** Failureは`MonitoringState`、`AcknowledgedSnapshot`、`CurrentSnapshot`を変更しない。
-4. **不確定な観測を変更扱いにしない。** `Parsed → Missing`やUnparsed FileSizeをChangedに変換しない。
-5. **別作品へ古いBaselineを流用しない。** 登録ProductId変更はHTTP前に止め、明示Resetを要求する。
-6. **Redirect先ProductIdを再確認する。** 初回Baseline作成前でもrequested/resolved identityを照合する。
-7. **比較不能時に状態を進めない。** `Indeterminate` / `IdentityMismatch`の`TargetState`はnullであることを尊重する。
-8. **保存途中のJSONを本ファイルへ昇格しない。** tempを書いて再読込検証後に置換する。
-9. **新しいSchemaを古いコードで上書きしない。** 未対応Schemaはfail closed。
-10. **チェックと状態変更を同時実行しない。** `operationLock`の意味を失わせない。
-11. **保存に失敗した結果をタグだけ成功扱いしない。** GlobalProgress error時はタグ反映を停止する。
-12. **ユーザーの無関係なPlayniteタグを削除しない。** `[DLsite更新] `接頭辞の自管理タグだけを操作する。
-13. **Playnite本体提供DLLをむやみに同梱しない。** Playnite.SDK / AngleSharp / Newtonsoft.Jsonのruntime重複を避ける。
-14. **正常リモート観測とゲーム固有の比較状態を混同しない。** 1ゲームの不正な旧Snapshotで他ゲームのキャッシュ再利用を阻害しない。
-15. **DLsiteへの並列大量アクセスへ変更しない。** 現行はHTTPを直列化し、開始間隔を守る。
+壊れたsettingsでPlugin起動自体を失敗させるよりdefault値を使う設計です。
 
-これらを変更する場合は、理由、想定影響、回帰テスト、実機検証を同一変更で追加してください。
+`EndEdit()` 後にruntime serviceを再構築します。operation中なら、そのoperationは開始時のoptionsで完了し、途中でclient/cache/state machineを差し替えません。
 
-## 13. 失敗時の原則
+Runtime再構築によりmemory cacheは新instanceになります。
 
-このプロジェクトは「わからないときは既知状態を壊さない」を基本方針とします。
+---
 
-### Failure時に進めてよいもの
+## 14. 依存関係とFramework上の注意
+
+### Core `net462`
+
+- `System.Net.Http` **explicit reference**
+- AngleSharp 0.9.9 (`ExcludeAssets=runtime`)
+- Newtonsoft.Json 10.0.3 (`ExcludeAssets=runtime`)
+
+`HttpClient`はCore自身が使用するため、`System.Net.Http`参照はPlugin側だけではなく**Coreのnet462 target自身に必要**です。ここを削るとCore単体の.NET Framework 4.6.2 buildが失敗します。`Static-Validate.py`にもこの参照漏れを検出するチェックがあります。
+
+### Core `net8.0`
+
+- AngleSharp 0.9.9
+- Newtonsoft.Json 10.0.3
+
+### Plugin
+
+- PlayniteSDK 6.16.0 (`ExcludeAssets=runtime`)
+- `System.Net.Http`
+- Core project reference
+
+### Tests
+
+- Microsoft.NET.Test.Sdk 18.10.0
+- xunit.v3 4.0.0
+- xunit.runner.visualstudio 4.0.0
+
+### 配布payload
+
+必要:
+
+```text
+DLsiteUpdateMonitor.dll
+DLsiteUpdateMonitor.Core.dll
+extension.yaml
+```
+
+同梱しない:
+
+```text
+Playnite.SDK.dll
+AngleSharp.dll
+Newtonsoft.Json.dll
+```
+
+Playnite本体側と競合するruntime DLLを独自同梱しない方針です。
+
+---
+
+## 15. 絶対に壊してはいけない不変条件
+
+将来の変更で最も重要な部分です。便利さ・速度・コード短縮を理由に弱体化しないでください。
+
+1. **初回正常取得を更新扱いにしない。** 初回はBaselineのみ。
+2. **比較基準を最後の取得結果へ自動で進めない。** `AcknowledgedSnapshot`は明示Acknowledgeまで維持。
+3. **HTTP/解析failureでPendingを消さない。** Failureは`MonitoringState`、`AcknowledgedSnapshot`、`CurrentSnapshot`を変更しない。
+4. **不確定な観測をChangedへ変換しない。** `Parsed → Missing`やUnparsed FileSizeはIndeterminate。
+5. **別作品へ旧Baselineを流用しない。** Link変更はHTTP前に停止し明示Resetを要求。
+6. **redirect先ProductIdを再確認する。** 初回Baseline前でもidentity checkする。
+7. **比較不能時に状態を進めない。** null `TargetState`の意味を保つ。
+8. **保存途中のJSONをprimaryへ昇格しない。** temp再読込検証後だけ置換。
+9. **新しいSchemaを古いコードで上書きしない。** unsupported schemaはfail closed。
+10. **checkと状態mutationを同時実行しない。** `operationLock`の意味を維持。
+11. **save失敗をtagだけ成功扱いにしない。** progress error時はtag反映を停止。
+12. **ユーザーの無関係なPlaynite tagを削除しない。** `[DLsite更新] `だけを所有。
+13. **Playnite本体提供runtime DLLを重複同梱しない。**
+14. **Remote observationのhealthとGame固有comparison healthを混同しない。**
+15. **DLsiteへの並列大量アクセスへ変更しない。** 現行は直列 + interval。
+16. **cache hitでremote取得時刻を書き換えない。** `FetchedAtUtc`は元観測時刻を保持。
+17. **ParserのDOM欠落を安易に「値が消えた」と解釈しない。** Missing / Unparsed semanticsを維持。
+
+これらを変更する場合は、理由、影響、回帰テスト、必要な実機Smoke Test、ドキュメント更新を同一変更へ含めてください。
+
+---
+
+## 16. Failure時の原則
+
+基本方針は「わからないときは既知状態を壊さない」です。
+
+Failure時に進めてよいもの:
 
 - `LastAttemptAtUtc`
 - `LastCheckHealth`
 - `LastError`
-- 状況によって`LastObservation`（取得自体は成功したが比較劣化の場合）
+- 状況によって `LastObservation`
 
-### Failure時に進めてはいけないもの
+進めてはいけないもの:
 
 - `AcknowledgedSnapshot`
 - `CurrentSnapshot`
 - `MonitoringState`
 - `LastSuccessfulCheckAtUtc`
 
-## 14. 作品識別の安全性
-
-次の3点を区別します。
-
-1. `RegisteredUrl`: Playniteへ登録されているURL
-2. `RequestedProductId`: リンクから解決し、追跡対象として記録したProductId
-3. `ResolvedProductId`: HTTP redirect後のURL/HTML解析から得たProductId
-
-既追跡の`RequestedProductId`と新しいリンクのProductIdが変わった場合は、ネットワークへ行く前に`LinkError`です。
-
-HTTP先が別ProductIdへRedirectした場合は`RedirectedToDifferentProduct`です。
-
-どちらも旧Baselineを新しい作品へ流用しません。
-
-## 15. Playniteタグ設計
-
-プラグイン管理タグの接頭辞:
-
-```text
-[DLsite更新] 
-```
-
-現在作成するタグ:
-
-```text
-[DLsite更新] 更新あり
-[DLsite更新] 配布物変更
-```
-
-`PendingUpdateAndFileChange`は`更新あり`タグへ集約されます。
-
-タグ同期をOFFにすると、既存の自管理タグを除去します。`RemoveOwnTags`はprefixで自管理タグだけを選びます。
-
-## 16. 設定
-
-| Setting | Default | Range | Runtime impact |
-|---|---:|---:|---|
-| `RequestIntervalSeconds` | 2 | 1〜60 | HTTP開始間隔 |
-| `TimeoutSeconds` | 20 | 5〜120 | 1試行timeout |
-| `RetryCount` | 2 | 0〜5 | retry追加回数 |
-| `CacheHours` | 24 | 1〜168 | SnapshotCache TTL |
-| `HistoryLimit` | 50 | 10〜500 | ゲーム単位履歴上限 |
-| `EnableTags` | true | bool | Playniteタグ同期 |
-
-保存済み設定が壊れて読み込めない場合、Plugin起動失敗よりdefault設定での起動を優先します。
-
-設定変更後は`ReloadRuntimeSettings()`でHTTP client/cache/state machineを再構築します。処理実行中は変更を即時反映せず、その操作は旧immutable runtime optionsのまま完了させます。
+---
 
 ## 17. テスト戦略
 
-### Core自動テスト
+### Core tests
 
 `tests/DLsiteUpdateMonitor.Core.Tests`
 
-現在のリリース検証記録では63ケースPASSです。
+v0.1.0検証記録では63ケースPASS。
 
-特に回帰として重要なケース:
+重要な回帰:
 
-- 初回正常取得がBaselineになる
-- 初回でも別作品RedirectはBaselineを作らない
-- HTTP 403等でPending state/Snapshotを保持
-- Parse degradedでCurrentSnapshotを上書きしない
-- Healthy remote observationのcache reuse
-- HTTP 200利用不可ページを`ProductUnavailable`に分類
-- 既追跡ProductId変更は明示Resetを要求し、HTTPを行わない
-- 1ゲームの不正なacknowledged snapshotが同一ProductIdの別ゲームのremote cacheを汚染しない
+- 初回正常取得がBaseline
+- 初回でも別作品redirectはBaselineを作らない
+- HTTP failure後もPending/Snapshot維持
+- parse degradedでCurrentSnapshotを上書きしない
+- healthy remote observationのcache reuse
+- HTTP 200利用不可ページを`ProductUnavailable`
+- 既追跡ProductId変更は明示Resetを要求しHTTPを行わない
+- 1 Gameの不正なacknowledged snapshotが同ProductIdの別Gameのcache reuseを汚染しない
 
-### 実機Smoke Test
+HTTP testsでは `HttpClient` / Clock / Delayを差し替え、実DLsiteへアクセスせず検証します。
 
-Playnite SDK統合、UI、タグ、ファイル配置はCore testだけでは保証できません。
+### Static validation
 
-[docs/SMOKE_TEST.md](docs/SMOKE_TEST.md)のGate A〜Fを順番に実施します。
+```powershell
+python .\tools\Static-Validate.py
+```
 
-**Gateを飛ばして全ライブラリテストへ進まないでください。**
+これは実build/testの代替ではありません。
 
-## 18. ビルド
+### Playnite実機Smoke Test
 
-詳細は [BUILD.md](BUILD.md)。
+[docs/SMOKE_TEST.md](docs/SMOKE_TEST.md) のGate A〜Fを順番に実施します。
 
-標準ゲート:
+**Gateを飛ばして全ライブラリへ進まないでください。**
+
+---
+
+## 18. Build / Release
+
+Build詳細: [BUILD.md](BUILD.md)
+
+標準gate:
 
 ```powershell
 .\tools\Validate-Build.ps1
 ```
 
-確認内容:
-
-- .NET 8 SDK
-- .NET Framework 4.6.2 Targeting Pack
-- restore
-- Core tests
-- net462 Plugin build
-- 必須payload
-- 禁止runtime DLL非同梱
-- `extension.yaml`基本条件
-
-検証済みpayloadは`artifacts\plugin`へ作成されます。
-
-## 19. リリース
-
-詳細は [docs/RELEASE.md](docs/RELEASE.md)。
-
-概略:
+Release詳細: [docs/RELEASE.md](docs/RELEASE.md)
 
 ```text
 Version更新
   ↓
 Core tests / Plugin build
   ↓
-artifacts/plugin生成
+artifacts/plugin
   ↓
 Playnite Smoke Gate A〜F
   ↓
-実機確認した同じpayloadをPackage-Releaseへ
+実機確認した同じpayloadをPackage-Release
   ↓
 .pext + SHA256SUMS + RELEASE-SUMMARY
   ↓
-CHANGELOG / docs最終確認
+CHANGELOG / docs確認
   ↓
 Commit / Tag / GitHub Release
 ```
 
-**Smoke Test後に別バイナリへ再ビルドして、その未検証バイナリを配布しないでください。**
+**Smoke Test後に再buildした未検証binaryを配布しないでください。**
 
-## 20. Version管理
+### Version管理
 
-現状、Versionは少なくとも次の2か所にあります。
+少なくとも次の2か所を同期します。
 
 - `src/DLsiteUpdateMonitor.Plugin/DLsiteUpdateMonitor.Plugin.csproj`
 - `src/DLsiteUpdateMonitor.Plugin/extension.yaml`
 
-v0.1.0では一致しています。
+v0.1.0では両方 `0.1.0`。
 
-`Package-Release.ps1`は`extension.yaml`からVersionを読みます。現行検証スクリプトがcsprojとextension.yamlのVersion一致まで自動検証していることは確認できていないため、Release時に手動で再確認してください。
+現行validation scriptが両Versionの一致まで自動検査することは確認できていないため、Release前に手動でも確認します。
 
-Versionを変更したら、同じ変更で少なくとも次も同期します。
+Version変更時はREADME / DEVELOPMENT / CHANGELOG / 必要なRelease記録も同期します。
 
-- README
-- DEVELOPMENT
-- CHANGELOG
-- 必要に応じRELEASE_STATUSまたは新しいRelease記録
+---
 
-## 21. 過去に確認できる重要な問題・対策
+## 19. 確認できる過去の重要問題
 
 ### 古いWindows PowerShellでのSHA-256計算互換性
 
-v0.1.0の最終検証記録では、実機検証済みMilestone 3.2以降のPlugin本体ソース変更はなく、Release packaging scriptだけが古いWindows PowerShellでも動くよう変更されたと記録されています。
+v0.1.0最終検証記録では、実機検証済みPlugin本体ソースを変えず、Release packaging scriptのSHA-256計算を `Get-FileHash` 依存から `System.Security.Cryptography.SHA256` ベースへ変更しています。
 
-**症状/背景**
+再発防止:
 
-`Get-FileHash`依存では古いWindows PowerShell環境との互換性に問題があり得る。
+- Release toolingのPowerShell互換性を変更する場合は対象環境でpackage/hash生成を確認
+- 実機検証済みpayloadを勝手に再buildしない
 
-**対応**
+これ以外はVersion・原因・修正を確実に復元できない過去バグを推測で追加しません。
 
-`tools/Package-Release.ps1`のSHA-256計算を`System.Security.Cryptography.SHA256`利用へ変更。
+---
 
-**再発防止**
-
-Release toolingのPowerShell互換性を変更する場合は、実際の対象環境でpackage/hash生成を確認する。
-
-これ以外の過去バグについて、Git履歴や現在の資料からVersion・原因・修正を確実に復元できないものはここへ推測で追加しません。
-
-## 22. 確認済み / 未確認 / 既知制限
+## 20. 確認済み / 未確認 / 既知制限
 
 ### 確認済み
 
-- v0.1.0 Coreテスト63ケース
+- Core test 63ケース
 - net462 Plugin build
-- Playnite 10.56での読み込み/メニュー/設定
-- 33件のDLsiteリンク診断
+- Playnite 10.56で読み込み / menu / settings
+- DLsite link診断 33 / 33
 - 初回Baseline
-- 同一状態の再チェック
-- 一時通信失敗後の状態保持
-- 小規模バッチ
-- 33作品の全ライブラリチェック
-- `.pext`作成・インストール
-- `.pext`更新後の既存監視状態維持
+- 同一状態再check
+- 一時通信failure後の状態保持
+- 小規模batch
+- 33作品全ライブラリcheck
+- `.pext`作成・install
+- install後の既存監視状態維持
 
 ### 未確認
 
-- PlayniteがPlugin uninstall時にユーザーデータを自動削除するか
-- Playnite 10.56以外のVersion互換性
-- 将来のDLsite HTML変更への互換性
-- GitHub Actions環境でのbuild/test（CI未導入）
-- 公開Git tag運用（現時点でTagを確認できていない）
+- PlayniteがPlugin uninstall時にuser dataを自動削除するか
+- Playnite 10.56以外の互換性
+- 将来のDLsite HTML変更
+- GitHub Actions上のbuild/test
+- 公開Git tag運用
 
 ### 既知制限
 
-- 手動チェックのみ
+- 手動checkのみ
 - DLsiteのみ
-- 商品ページの2項目のみ監視
-- ローカルゲームVersion判定なし
-- FileSizeが安全にParseできなければ比較しない
-- 作品ID形式は英字2文字 + 6/8桁数字
+- 商品ページの2信号のみ監視
+- local game Version判定なし
+- FileSizeが安全にparseできない場合は比較しない
+- ProductId形式は英字2文字 + 6/8桁数字
 
-## 23. デバッグ
+---
 
-### ログ
+## 21. Debug / 障害調査
 
-PluginはPlaynite SDKの`LogManager.GetLogger()`を使用します。
+PluginはPlaynite SDKの `LogManager.GetLogger()` を使用します。独自logファイル絶対pathは定義していません。
 
-リポジトリ内に独自ログファイルの絶対保存先は定義していません。Playnite側のログ確認方法を利用してください。
-
-### 問題時に保全する情報
+問題時に保全する情報:
 
 - 症状
 - Playnite Version
 - Plugin Version
-- 操作（全体チェック/個別チェック/適用/無視/Reset等）
+- 操作内容
 - `tracking.json`
 - `tracking.backup.json`
-- `.corrupt-*`があればそのファイル
+- `.corrupt-*`
 - 問題のDLsite URL
-- Playniteログ
+- Playnite log
 - 発生時刻
-- Network errorならHTTP status / `CheckHealth`
+- HTTP status / `CheckHealth`
 
 共有前に個人情報や不要なURL情報が含まれていないか確認してください。
 
-### Debug mode
+独自Debug mode設定は現行実装にありません。
 
-独自のDebug mode設定は現行実装にありません。
+詳細: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 
-## 24. 変更時のチェックリスト
+---
+
+## 22. 変更時のチェックリスト
 
 ### 開発開始前
 
 1. `README.md`
 2. `DEVELOPMENT.md`
 3. `CHANGELOG.md`
-4. `IMPLEMENTATION_NOTES.md`
-5. 対象コードと関連テスト
+4. `docs/ARCHITECTURE.md`
+5. 対象コード
+6. 関連テスト
 
-を読む。
+`IMPLEMENTATION_NOTES.md` は旧URL/旧参照互換のインデックスなので、通常の開発開始時に別途読む必要はありません。
 
 ### 実装中
 
-- 現在の不変条件を壊していないか
-- Failure pathをHappy pathと同じ程度に検討したか
+- 不変条件を壊していないか
+- Failure pathをHappy pathと同程度に検討したか
 - identity mismatchを曖昧に受け入れていないか
-- persistenceを直接上書きに戻していないか
-- Playnite user data / tagsを広く変更していないか
+- persistenceを直接上書きへ戻していないか
+- user data / tagを広く変更していないか
 - retry対象を安易に増やしていないか
+- parser DOM変化を「実データ変更」と誤認していないか
 
 ### 実装後
 
-1. 関連Unit Testを追加/更新
+1. 関連Unit Test追加/更新
 2. 全Core test
 3. Plugin build
 4. `Validate-Build.ps1`
@@ -825,49 +837,54 @@ PluginはPlaynite SDKの`LogManager.GetLogger()`を使用します。
 9. 必要なdocs更新
 10. Version整合性確認
 
-## 25. コーディング上の注意
+---
 
-- Coreロジックは可能な限りPlaynite SDKから独立させる
-- HTTP、Clock、Delayはテスト差し替え可能性を維持する
-- Snapshotは共有参照を不用意に変更せずCloneする
-- 状態変化は`TrackingStateMachine`へ集約する
-- Product identity判定は分散させず既存Resolver/CheckServiceを利用する
-- parserで「DOMが見つからない」を安易に「値が消えた」と解釈しない
-- destructiveな動作を追加する場合は明示確認、テスト、復旧手順をセットで設計する
+## 23. コーディング上の注意
 
-## 26. ドキュメント更新ルール
+- Core logicは可能な限りPlaynite SDKから独立
+- HTTP / Clock / Delayのtest差し替え可能性を維持
+- Snapshot共有参照を不用意にmutationせずclone
+- 状態変化は `TrackingStateMachine` へ集約
+- Product identity判定は既存Resolver / CheckServiceを利用
+- parserでDOM欠落を安易に「値が消えた」と扱わない
+- destructive operationを追加する場合は明示確認・test・復旧手順をセットで設計
 
-役割分担:
+---
 
-- `README.md`: 利用者向け詳細情報 + 技術概要
-- `DEVELOPMENT.md`: 開発継続・内部仕様・安全条件
-- `CHANGELOG.md`: Versionごとの変更履歴
-- `docs/ARCHITECTURE.md`: コンポーネント関係・処理/データフロー
-- `docs/TROUBLESHOOTING.md`: 詳細な問題解決
-- `docs/RELEASE.md`: Release工程
-- `BUILD.md`: ビルド/検証コマンド
-- `IMPLEMENTATION_NOTES.md`: 既存の安全設計詳細メモ
-- `RELEASE_STATUS.md`: v0.1.0の検証証跡
+## 24. ドキュメントの役割
 
-同じ文章を各ファイルへ複製せず、概要 + リンクを優先してください。
+- `README.md` — 利用者向け詳細情報 + 技術概要
+- `DEVELOPMENT.md` — **内部仕様・安全条件・開発引き継ぎの正本**
+- `CHANGELOG.md` — Version単位の変更履歴
+- `docs/ARCHITECTURE.md` — コンポーネント関係・処理/データフロー・設計判断
+- `docs/TROUBLESHOOTING.md` — 詳細な問題解決
+- `docs/RELEASE.md` — Release工程
+- `docs/SMOKE_TEST.md` — Playnite実機Gate
+- `BUILD.md` — build / validation command
+- `RELEASE_STATUS.md` — v0.1.0固有の検証証跡
+- `IMPLEMENTATION_NOTES.md` — 旧リンクを壊さないための互換インデックス。仕様正本ではない
 
-## 27. 現在のドキュメント整理上の注意
+同じ説明を複数文書へ丸ごと複製せず、概要 + 正本へのリンクを優先します。
 
-`IMPLEMENTATION_NOTES.md`の内容はDEVELOPMENT/ARCHITECTUREと一部重複しますが、安全条件の由来を持つ既存資料です。削除・統合する場合は内容差分を確認し、重要な設計判断が失われないようにしてください。
+`RELEASE_STATUS.md` は一般手順ではなくv0.1.0固有の検証証跡なので、`docs/RELEASE.md`があっても維持します。
 
-`RELEASE_STATUS.md`はv0.1.0固有の検証証跡です。一般的なRelease手順を`docs/RELEASE.md`へ移しても、この検証記録そのものを安易に削除しないでください。
+---
 
-## 28. 次回のAI / 開発者への引き継ぎ
+## 25. 次回AI / 開発者への引き継ぎ
 
-次の開発を始める際は、最低限以下を最初に確認してください。
+次の開発を始める際は、最低限次を確認してください。
 
 1. `README.md`
 2. `DEVELOPMENT.md`
 3. `CHANGELOG.md`
 4. `docs/ARCHITECTURE.md`
-5. 対象コード
+5. 最新コード
 6. 関連テスト
 
-変更後はコードだけで終わらせず、仕様が変わった資料を同じPR/Commitで同期してください。
+変更後はコードだけで終わらせず、仕様が変わった文書を同じPR/Commitで同期してください。
 
-特に「安全側に停止する」「既存の確認済み状態を失わない」「作品identityを暗黙に切り替えない」という設計を、利便性のために無断で弱めないでください。
+特に次の3原則を利便性のために弱めないでください。
+
+- **安全側に停止する**
+- **既存の確認済み状態を失わない**
+- **作品identityを暗黙に切り替えない**

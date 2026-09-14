@@ -77,4 +77,10 @@ SHA-256: c84d8fbb3fb82e5d3d5c6bd974c153b33dd8437ff96f4447a4ed0c68c7a939bf
 
 ## Unreleased
 
-現在、コード上で次Versionとして確定した機能変更はありません。
+コード上で次Versionとして確定した機能変更はありません。
+
+### Changed
+
+- 重複していた`IMPLEMENTATION_NOTES.md`の安全設計本文を`DEVELOPMENT.md` / `docs/ARCHITECTURE.md`へ集約
+- `IMPLEMENTATION_NOTES.md`は既存リンクを壊さないための互換インデックスへ縮小
+- `DEVELOPMENT.md`を内部仕様・安全条件・開発引き継ぎの正本として整理し、Parser text抽出方針、cache時刻保持、`net462`の`System.Net.Http`参照理由を明文化
