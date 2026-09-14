@@ -1,99 +1,106 @@
-# Runtime smoke-test gate
+# Playnite実機スモークテスト
 
-Run this only **after** `tools\Validate-Build.ps1` passes all Core tests and produces `artifacts\plugin`.
-Use a disposable Playnite profile or a fresh Playnite backup for the first run.
+このテストは、`tools\Validate-Build.ps1`がすべてのCoreテストに成功し、`artifacts\plugin`を生成したあとに実行してください。
 
-## Gate A — load only
+初回はPlayniteのバックアップ、または検証用プロファイルの使用を推奨します。
 
-1. Install with `tools\Install-Dev.ps1` or copy `artifacts\plugin` to a dedicated extension folder.
-2. Start Playnite.
-3. Confirm Playnite starts without an extension load error.
-4. Confirm `DLsite Update Monitor` appears in the main menu and game context menu.
-5. Open plugin settings and press Save without changing values.
+## Gate A — 読み込みだけを確認
 
-**Pass condition:** no crash, no extension error, no unexpected game metadata change.
+1. `tools\Install-Dev.ps1`を使うか、`artifacts\plugin`を専用の拡張機能フォルダへ配置します。
+2. Playniteを起動します。
+3. 拡張機能の読み込みエラーが出ないことを確認します。
+4. メインメニューとゲーム右クリックメニューに`DLsite Update Monitor`が表示されることを確認します。
+5. プラグイン設定を開き、値を変更せず保存します。
 
-## Gate B — link diagnosis only
+**合格条件:** クラッシュ、拡張機能エラー、予期しないゲームメタデータ変更がないこと。
 
-1. Run `DLsiteリンク診断`.
-2. Record counts for normal / missing / invalid / ambiguous links.
-3. Do not run an update check yet.
-4. Confirm titles, Links, Notes, Sources, genres and existing user tags are unchanged.
+## Gate B — DLsiteリンク診断だけを実行
 
-**Pass condition:** diagnosis is read-only.
+1. `DLsiteリンク診断`を実行します。
+2. 正常 / リンクなし / 不正 / 曖昧の件数を確認します。
+3. この段階では更新チェックを実行しません。
+4. タイトル、Links、Notes、Sources、ジャンル、既存のユーザータグが変更されていないことを確認します。
 
-## Gate C — one known game
+**合格条件:** 診断処理が読み取り専用であること。
 
-Pick exactly one game whose Playnite Links contains a valid DLsite product URL.
+## Gate C — 既知の1作品
 
-1. Before checking, note whether the game has any `[DLsite更新]` tag.
-2. Run `今すぐ確認` once.
-3. Confirm the summary reports **監視開始: 1** for a previously untracked game.
-4. Confirm no `[DLsite更新] 更新あり` or `[DLsite更新] 配布物変更` tag is added on the first observation.
-5. Locate the plugin user-data directory and confirm `tracking.json` was created.
-6. Inspect only the selected game's record and confirm:
-   - `AcknowledgedSnapshot` exists.
-   - `CurrentSnapshot` exists.
-   - both fingerprints are equal.
-   - `MonitoringState` is `Clean`.
-   - `LastCheckHealth` is `Healthy`.
-7. Run `今すぐ確認` again without changing anything.
-8. Confirm no update tag appears and state stays `Clean`.
+PlayniteのLinksに有効なDLsite作品URLが登録されているゲームを1本だけ選びます。
 
-**Pass condition:** first observation is baseline only; identical second observation remains clean.
+1. チェック前に`[DLsite更新]`タグの有無を確認します。
+2. `今すぐ確認`を1回実行します。
+3. 未追跡のゲームでは結果が**監視開始: 1**になることを確認します。
+4. 初回観測で`[DLsite更新] 更新あり`や`[DLsite更新] 配布物変更`が付かないことを確認します。
+5. プラグインのユーザーデータフォルダに`tracking.json`が作成されることを確認します。
+6. 選択したゲームの記録について、次を確認します。
+   - `AcknowledgedSnapshot`が存在する
+   - `CurrentSnapshot`が存在する
+   - 両者のフィンガープリントが一致する
+   - `MonitoringState`が`Clean`
+   - `LastCheckHealth`が`Healthy`
+7. 状態を変更せず、同じゲームで`今すぐ確認`をもう一度実行します。
+8. 更新タグが付かず、状態が`Clean`のままであることを確認します。
 
-## Gate D — failure safety
+**合格条件:** 初回観測はベースライン作成だけで、同一状態の2回目チェックも変更なしになること。
 
-Use a test copy of the game entry or temporarily replace its DLsite Link with a malformed DLsite product URL.
+## Gate D — エラー時の安全性
 
-1. Run the check.
-2. Confirm it reports LinkError / error-required-review.
-3. Restore the valid link.
-4. Confirm the previous acknowledged/current snapshots were not erased.
+まず、一時的な通信失敗や不正リンクが既存状態を壊さないことを確認します。
 
-If a pending update state is available during later testing, repeat an error check and confirm the pending state is preserved.
+1. テスト用ゲーム、または復元可能な状態でDLsiteリンクを一時的に不正なURLへ変更します。
+2. チェックを実行します。
+3. `LinkError`または要確認エラーとして扱われることを確認します。
+4. 正しいリンクへ戻します。
+5. 既存の`AcknowledgedSnapshot`と`CurrentSnapshot`が消えていないことを確認します。
+6. 再チェックし、「監視開始」ではなく既存ベースラインを使った「変更なし」へ戻ることを確認します。
 
-Also verify identity safety on a disposable copy of a game:
+保留中の更新状態を用意できる場合は、その状態でもエラーチェックを行い、保留状態が維持されることを確認してください。
 
-1. Start with a tracked game and record its current RJ ID.
-2. Change only the Playnite DLsite link to a **different** valid RJ ID.
-3. Run `今すぐ確認`.
-4. Confirm the plugin stops with a LinkError instructing you to reset monitoring and does not create a baseline for the new product.
-5. Run `監視状態をリセット`, then check again.
-6. Confirm the new RJ is now accepted as a fresh baseline.
+### 作品ID変更の安全性
 
-If you have a known unavailable/withdrawn DLsite work that still returns an HTTP 200 error page, confirm it is reported as **ProductUnavailable**, not as a generic parser failure.
+1. 追跡済みゲームの現在の作品IDを記録します。
+2. PlayniteのDLsiteリンクだけを、**別の有効な作品ID**へ変更します。
+3. `今すぐ確認`を実行します。
+4. プラグインが`LinkError`で停止し、新しい作品に古いベースラインを流用しないことを確認します。
+5. `監視状態をリセット`を実行します。
+6. もう一度チェックし、新しい作品が新規ベースラインとして受け入れられることを確認します。
 
-**Pass condition:** failures never clear a valid baseline or pending state, and product identity never changes implicitly.
+利用停止・販売終了などのDLsite作品で、HTTP 200のエラーページが返るケースを確認できる場合は、一般的な解析エラーではなく`ProductUnavailable`として扱われることも確認します。
 
-## Gate E — 5–10 games
+**合格条件:** 取得失敗で有効なベースラインや保留状態が消えず、作品IDが暗黙に切り替わらないこと。
 
-1. Select 5–10 games with valid links.
-2. Run `今すぐ確認`.
-3. Confirm progress/cancel UI remains responsive.
-4. Confirm each new game creates a baseline, not an update alert.
-5. If two games intentionally reference the same product ID, confirm only one remote observation is used in that batch.
-6. Restart Playnite and repeat a cached check.
-7. Temporarily disable `更新状態をPlayniteタグへ反映` in plugin settings. Confirm existing `[DLsite更新]` tags disappear while unrelated tags remain untouched. Re-enable it and confirm pending-state tags are restored.
+## Gate E — 5〜10作品
 
-**Pass condition:** persisted state reloads correctly, tag integration is reversible, and no mass false-positive appears.
+1. 有効なDLsiteリンクを持つゲームを5〜10本選びます。
+2. `今すぐ確認`を実行します。
+3. 進捗表示とキャンセル操作が応答することを確認します。
+4. 新規ゲームは更新通知ではなくベースライン作成になることを確認します。
+5. 同じ作品IDを意図的に参照するゲームが複数ある場合、そのバッチ内ではリモート観測が再利用されることを確認します。
+6. Playniteを再起動し、保存した監視状態が再読み込みされることを確認します。
+7. 設定の`更新状態をPlayniteタグへ反映`を一時的に無効にします。
+8. プラグイン管理の`[DLsite更新]`タグだけが消え、無関係なユーザータグが残ることを確認します。
+9. タグ連携を再度有効にし、保留状態に対応するタグが復元されることを確認します。
 
-## Gate F — full library
+**合格条件:** 永続状態が正しく復元され、タグ連携を安全にON/OFFでき、大量の誤検知が発生しないこと。
 
-Only after A–E pass:
+## Gate F — 全ライブラリ
 
-1. Back up Playnite.
-2. Run full-library check.
-3. Review `エラー/要確認` before acting on update tags.
-4. Do not package a `.pext` until the full-library result is plausible.
+Gate A〜Eがすべて成功してから実行します。
 
-## Stop conditions
+1. Playniteをバックアップします。
+2. 全ライブラリチェックを実行します。
+3. `エラー/要確認`を確認してから更新タグを判断します。
+4. 結果が妥当であることを確認します。
 
-Stop testing immediately and preserve `tracking.json`, logs and the exact offending DLsite URL if any of these occur:
+`.pext`の作成・配布は、全ライブラリチェックまで成功したあとに行ってください。
 
-- first check creates an update tag;
-- a 403/429/timeout clears a pending state;
-- parser failure overwrites a known snapshot;
-- non-plugin tags are removed;
-- Notes/Links/title are modified;
-- many unrelated games become updates at once.
+## 即時中止条件
+
+次のいずれかが起きた場合はテストを中止し、`tracking.json`、ログ、問題が起きたDLsite URLを保存してください。
+
+- 初回チェックで更新タグが付く
+- 403 / 429 / timeoutによって保留状態が消える
+- パーサー失敗で既知のスナップショットが上書きされる
+- プラグイン管理外のタグが削除される
+- Notes / Links / タイトルが変更される
+- 無関係な多数のゲームが同時に更新扱いになる
