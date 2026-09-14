@@ -6,9 +6,15 @@
 
 今後Releaseを作成する際は、コード・README・DEVELOPMENTと同じ変更でこのファイルも更新してください。
 
-## [0.1.0] - 2026-09-14
+## [Unreleased]
 
-最初の安定版として扱うVersion。
+現在、次Versionとして確定した機能変更はありません。
+
+## [1.0.0] - 2026-09-14
+
+**初回正式公開版。**
+
+v0.1.0で実機検証していた現行実装を、公開用Version `1.0.0` として正式に位置付けたReleaseです。監視ロジック、Tracking Schema、対応機能の範囲はv0.1.0検証時点から変更していません。
 
 ### Added
 
@@ -38,9 +44,10 @@
 
 ### Changed
 
+- Plugin csprojと`extension.yaml`のVersionを`1.0.0`へ更新
+- README / DEVELOPMENT / ARCHITECTURE / RELEASE文書を初回正式公開版の位置付けへ更新
+- 重複していた`IMPLEMENTATION_NOTES.md`の安全設計本文を`DEVELOPMENT.md` / `docs/ARCHITECTURE.md`へ集約し、互換インデックスへ縮小
 - Release packagingのSHA-256計算を、古いWindows PowerShellでも利用しやすい`System.Security.Cryptography.SHA256`ベースへ変更
-- README、ビルド手順、実装メモ、リリース検証記録、Smoke Testを日本語化
-- 開発・引き継ぎ用ドキュメントを整備し、READMEを利用者向け主要ドキュメントとして拡充
 
 ### Security
 
@@ -50,9 +57,30 @@
 - Plugin管理外のPlayniteタグを削除しない設計
 - API Key、Access Token、PasswordなどのCredentialを必要としない構成
 
+### Validation basis
+
+v1.0.0は、v0.1.0として保存されている次の検証証跡を基準にしています。
+
+- Core自動テスト: 63ケース PASS
+- `.NET Framework 4.6.2`向けPlugin build PASS
+- DLsiteリンク診断: 33 / 33
+- 初回Baseline作成 PASS
+- 同一状態再チェック PASS
+- 一時通信失敗時の状態保持 PASS
+- 小規模バッチ PASS
+- 33作品の全ライブラリチェック PASS
+- `.pext`作成・インストール試験 PASS
+- インストール後の既存監視状態維持 PASS
+
+ただし、Version metadata変更後のv1.0.0配布バイナリはv0.1.0の既存`.pext`とは別成果物です。公開前に `Validate-Build.ps1`、必要な実機Smoke Test、`Package-Release.ps1`、v1.0.0 `.pext`インストール確認を実行し、新しいSHA-256を生成してください。
+
+## [0.1.0] - 2026-09-14
+
+正式公開前の検証基準Version。
+
 ### Validation
 
-v0.1.0の保存済み検証記録では次がPASSしています。
+保存済み検証記録では次がPASSしています。
 
 - Core自動テスト: 63ケース
 - `.NET Framework 4.6.2`向けPlugin build
@@ -73,14 +101,6 @@ DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_0_1_0.pext
 SHA-256: c84d8fbb3fb82e5d3d5c6bd974c153b33dd8437ff96f4447a4ed0c68c7a939bf
 ```
 
+このSHA-256はv0.1.0専用です。v1.0.0へ流用しません。
+
 詳細は [RELEASE_STATUS.md](RELEASE_STATUS.md) を参照してください。
-
-## Unreleased
-
-コード上で次Versionとして確定した機能変更はありません。
-
-### Changed
-
-- 重複していた`IMPLEMENTATION_NOTES.md`の安全設計本文を`DEVELOPMENT.md` / `docs/ARCHITECTURE.md`へ集約
-- `IMPLEMENTATION_NOTES.md`は既存リンクを壊さないための互換インデックスへ縮小
-- `DEVELOPMENT.md`を内部仕様・安全条件・開発引き継ぎの正本として整理し、Parser text抽出方針、cache時刻保持、`net462`の`System.Net.Http`参照理由を明文化

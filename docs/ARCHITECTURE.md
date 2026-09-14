@@ -1,6 +1,8 @@
 # アーキテクチャ
 
-この文書は、DLsite Update Monitor v0.1.0の内部構造、データフロー、状態遷移、主要な設計判断をまとめます。
+この文書は、DLsite Update Monitor v1.0.0の内部構造、データフロー、状態遷移、主要な設計判断をまとめます。
+
+v1.0.0は、v0.1.0として実機検証していた現行実装を初回正式公開版として位置付けたVersionです。監視ロジックとTracking Schemaはv0.1.0検証時点から変更していません。
 
 利用方法は [README.md](../README.md)、開発ルールと安全不変条件は [DEVELOPMENT.md](../DEVELOPMENT.md) を参照してください。
 
@@ -488,7 +490,7 @@ Newtonsoft.Json.dll
 
 ### なぜFileSizeを必須にするか
 
-現行v0.1.0ではFileSizeが監視信号の1つであり、それが読めない候補を正常Snapshotとして確定すると、配布物変更を取り逃す可能性があるためです。
+現行v1.0.0ではFileSizeが監視信号の1つであり、それが読めない候補を正常Snapshotとして確定すると、配布物変更を取り逃す可能性があるためです。
 
 ### なぜfailureでCurrentSnapshotを更新しないか
 

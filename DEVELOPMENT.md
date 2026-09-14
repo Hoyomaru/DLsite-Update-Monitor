@@ -12,22 +12,24 @@
 
 | 項目 | 現在の状態 |
 |---|---|
-| 安定版として扱うVersion | 0.1.0 |
-| Plugin Version | `src/DLsiteUpdateMonitor.Plugin/DLsiteUpdateMonitor.Plugin.csproj`: `0.1.0` |
-| extension Version | `src/DLsiteUpdateMonitor.Plugin/extension.yaml`: `0.1.0` |
+| 現在の正式Version | 1.0.0 |
+| リリース位置付け | 初回正式公開版 |
+| Plugin Version | `src/DLsiteUpdateMonitor.Plugin/DLsiteUpdateMonitor.Plugin.csproj`: `1.0.0` |
+| extension Version | `src/DLsiteUpdateMonitor.Plugin/extension.yaml`: `1.0.0` |
 | Playnite | 10.56で実機検証済み |
 | Plugin target | .NET Framework 4.6.2 |
 | Core target | .NET Framework 4.6.2 / .NET 8.0 |
-| Core自動テスト | 63ケース PASS（v0.1.0検証記録） |
-| 実機Smoke Test | Gate A〜F PASS |
-| 全ライブラリ実機確認 | DLsiteリンク登録済み33作品でPASS |
-| `.pext`作成・インストール | PASS |
-| GitHub Release | 2026-09-14確認時点で未作成 |
-| 公開Git tag | 確認できていない |
+| Core自動テスト | 63ケース PASS（v0.1.0正式公開前検証記録） |
+| 実機Smoke Test | Gate A〜F PASS（v0.1.0正式公開前検証記録） |
+| 全ライブラリ実機確認 | DLsiteリンク登録済み33作品でPASS（同上） |
+| `.pext`作成・インストール | PASS（同上） |
+| Tracking Schema | 1 |
 | GitHub Actions / CI | 未導入 |
 | License | 未設定 |
 
-v0.1.0の実機検証証跡は [RELEASE_STATUS.md](RELEASE_STATUS.md) を正とします。
+v1.0.0は、v0.1.0として検証していた現行実装を初回正式公開版として位置付けたVersionです。監視ロジックとTracking Schemaはv0.1.0検証時点から変更していません。
+
+v0.1.0の実機検証証跡は [RELEASE_STATUS.md](RELEASE_STATUS.md) を正とします。Version metadata変更後のv1.0.0配布バイナリは別成果物なので、公開前にbuild / test / Smoke Test / package / install確認を再実施し、新しいSHA-256を生成してください。
 
 ---
 
@@ -35,7 +37,7 @@ v0.1.0の実機検証証跡は [RELEASE_STATUS.md](RELEASE_STATUS.md) を正と�
 
 本プロジェクトは、Playniteで管理されるゲームの `Game.Links` からDLsite作品URLを解決し、DLsite商品ページの配布状態を監視するGenericPluginです。
 
-v0.1.0で比較する信号は次の2つだけです。
+v1.0.0で比較する信号は次の2つだけです。
 
 1. `更新情報`
 2. `ファイル容量`
@@ -99,6 +101,7 @@ DLsite-Update-Monitor/
 ├─ docs/
 │  ├─ ARCHITECTURE.md
 │  ├─ RELEASE.md
+│  ├─ RELEASE_NOTES_1.0.0.md
 │  ├─ SMOKE_TEST.md
 │  └─ TROUBLESHOOTING.md
 ├─ README.md
@@ -106,7 +109,7 @@ DLsite-Update-Monitor/
 ├─ CHANGELOG.md
 ├─ BUILD.md
 ├─ IMPLEMENTATION_NOTES.md   # 旧リンク互換の安全設計インデックス
-└─ RELEASE_STATUS.md
+└─ RELEASE_STATUS.md         # v0.1.0正式公開前の検証証跡
 ```
 
 `IMPLEMENTATION_NOTES.md` は重複本文を持たない互換インデックスです。開発上の正本はこの `DEVELOPMENT.md` と `docs/ARCHITECTURE.md` です。
@@ -182,7 +185,7 @@ Playnite SDKの `GetPluginUserDataPath()` が返すディレクトリへ追跡JS
 
 - hostは正確に `dlsite.com` または `*.dlsite.com`
 - ProductIdは `/product_id/<ID>` からのみ抽出
-- v0.1.0形式は英字2文字 + 6桁または8桁数字
+- 現行形式は英字2文字 + 6桁または8桁数字
 - 異なる複数IDがあれば `Ambiguous`
 - DLsite hostなのに対応IDがなければ `Invalid`
 
@@ -647,7 +650,7 @@ Failure時に進めてよいもの:
 
 `tests/DLsiteUpdateMonitor.Core.Tests`
 
-v0.1.0検証記録では63ケースPASS。
+v0.1.0正式公開前の検証記録では63ケースPASS。
 
 重要な回帰:
 
@@ -661,6 +664,8 @@ v0.1.0検証記録では63ケースPASS。
 - 1 Gameの不正なacknowledged snapshotが同ProductIdの別Gameのcache reuseを汚染しない
 
 HTTP testsでは `HttpClient` / Clock / Delayを差し替え、実DLsiteへアクセスせず検証します。
+
+v1.0.0の公開成果物はVersion metadata変更後に全Core testとPlugin buildを再実行してください。
 
 ### Static validation
 
@@ -717,11 +722,17 @@ Commit / Tag / GitHub Release
 - `src/DLsiteUpdateMonitor.Plugin/DLsiteUpdateMonitor.Plugin.csproj`
 - `src/DLsiteUpdateMonitor.Plugin/extension.yaml`
 
-v0.1.0では両方 `0.1.0`。
+現在のv1.0.0では両方 `1.0.0`。
 
 現行validation scriptが両Versionの一致まで自動検査することは確認できていないため、Release前に手動でも確認します。
 
 Version変更時はREADME / DEVELOPMENT / CHANGELOG / 必要なRelease記録も同期します。
+
+### v1.0.0公開時の注意
+
+v0.1.0の既存`.pext`とSHA-256は正式公開前の検証証跡です。Version metadataを1.0.0へ更新すると配布バイナリは別成果物になるため、旧SHAを流用しません。
+
+v1.0.0のGitHub Release用本文は [docs/RELEASE_NOTES_1.0.0.md](docs/RELEASE_NOTES_1.0.0.md) を基準にします。
 
 ---
 
@@ -744,6 +755,8 @@ v0.1.0最終検証記録では、実機検証済みPlugin本体ソースを変�
 
 ### 確認済み
 
+以下はv0.1.0正式公開前の検証証跡として確認済みです。
+
 - Core test 63ケース
 - net462 Plugin build
 - Playnite 10.56で読み込み / menu / settings
@@ -756,13 +769,21 @@ v0.1.0最終検証記録では、実機検証済みPlugin本体ソースを変�
 - `.pext`作成・install
 - install後の既存監視状態維持
 
+### v1.0.0公開前に再確認するもの
+
+- Version `1.0.0`での `Validate-Build.ps1`
+- Core test / Plugin build
+- 必要なSmoke Gate
+- `DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_0_0.pext`の生成
+- v1.0.0 `.pext` install test
+- 新規SHA-256
+
 ### 未確認
 
 - PlayniteがPlugin uninstall時にuser dataを自動削除するか
 - Playnite 10.56以外の互換性
 - 将来のDLsite HTML変更
 - GitHub Actions上のbuild/test
-- 公開Git tag運用
 
 ### 既知制限
 
@@ -859,14 +880,15 @@ PluginはPlaynite SDKの `LogManager.GetLogger()` を使用します。独自log
 - `docs/ARCHITECTURE.md` — コンポーネント関係・処理/データフロー・設計判断
 - `docs/TROUBLESHOOTING.md` — 詳細な問題解決
 - `docs/RELEASE.md` — Release工程
+- `docs/RELEASE_NOTES_1.0.0.md` — v1.0.0 GitHub Release用本文
 - `docs/SMOKE_TEST.md` — Playnite実機Gate
 - `BUILD.md` — build / validation command
-- `RELEASE_STATUS.md` — v0.1.0固有の検証証跡
+- `RELEASE_STATUS.md` — v0.1.0正式公開前の検証証跡
 - `IMPLEMENTATION_NOTES.md` — 旧リンクを壊さないための互換インデックス。仕様正本ではない
 
 同じ説明を複数文書へ丸ごと複製せず、概要 + 正本へのリンクを優先します。
 
-`RELEASE_STATUS.md` は一般手順ではなくv0.1.0固有の検証証跡なので、`docs/RELEASE.md`があっても維持します。
+`RELEASE_STATUS.md` は一般手順ではなくv0.1.0固有の検証証跡なので、v1.0.0公開後も履歴として維持します。
 
 ---
 

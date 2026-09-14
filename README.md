@@ -20,15 +20,17 @@ DLsite作品を多数管理していると、各商品ページを手作業で�
 
 ## 現在の状態
 
-- 安定版として扱うVersion: **0.1.0**
-- Playnite実機検証: **完了**
-- Core自動テスト: **63ケース PASS**
-- `.pext`インストール試験: **PASS**
-- GitHub Release: **未作成（2026-09-14確認時点）**
-- Git tag: **このリポジトリから確認できる公開Tagは未確認**
+- 現在の正式Version: **1.0.0**
+- リリース位置付け: **初回正式公開版**
+- Playnite実機検証基準: **10.56**
+- Core自動テスト: **63ケース PASS（v0.1.0正式公開前検証記録）**
+- `.pext`インストール試験: **PASS（v0.1.0正式公開前検証記録）**
+- Tracking Schema: **1**
 - GitHub Actions / CI: **未導入**
 
-v0.1.0の詳細な検証記録と、検証済みパッケージ名・SHA-256は [RELEASE_STATUS.md](RELEASE_STATUS.md) を参照してください。
+v1.0.0は、v0.1.0として検証していた現行実装を初回正式公開版として位置付けたVersionです。監視ロジックとTracking Schemaはv0.1.0検証時点から変更していません。
+
+v0.1.0の詳細な検証証跡と旧パッケージSHA-256は [RELEASE_STATUS.md](RELEASE_STATUS.md) を参照してください。v1.0.0では新しい`.pext`を生成し、SHA-256を再計算します。
 
 ## 主な機能
 
@@ -46,7 +48,7 @@ v0.1.0の詳細な検証記録と、検証済みパッケージ名・SHA-256は 
 - 429 / timeout / 一時ネットワークエラー / 5xxの再試行
 - 不確定な解析結果や作品ID不一致時のfail-closed動作
 
-## v0.1.0で行わないこと
+## v1.0.0で行わないこと
 
 - 自動ダウンロード
 - 自動パッチ適用
@@ -61,7 +63,7 @@ v0.1.0の詳細な検証記録と、検証済みパッケージ名・SHA-256は 
 
 ## 動作環境
 
-| 項目 | 現行v0.1.0 |
+| 項目 | 現行v1.0.0 |
 |---|---|
 | OS | Windows（Playnite実機検証環境） |
 | Playnite | 10.56 |
@@ -80,16 +82,20 @@ v0.1.0の詳細な検証記録と、検証済みパッケージ名・SHA-256は 
 
 ### 一般利用者向け
 
-2026-09-14確認時点ではGitHub Releaseが未作成のため、このリポジトリ上に一般配布用ダウンロードはありません。`.pext`はソースツリーへコミットしない方針です。
-
-v0.1.0ではPlaynite Toolboxで生成した次のパッケージについて、インストール試験まで完了しています。
+GitHub Releasesのv1.0.0 Release Assetsから次の`.pext`をダウンロードし、Playniteへインストールしてください。
 
 ```text
-DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_0_1_0.pext
-SHA-256: c84d8fbb3fb82e5d3d5c6bd974c153b33dd8437ff96f4447a4ed0c68c7a939bf
+DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_0_0.pext
 ```
 
-公開Releaseを作成する場合の手順は [docs/RELEASE.md](docs/RELEASE.md) を参照してください。
+同じReleaseに添付する`SHA256SUMS.txt`でダウンロードした`.pext`のSHA-256を確認できます。
+
+`.pext`はソースツリーへコミットせず、GitHub Releasesで配布します。
+
+> [!WARNING]
+> v0.1.0の検証済みパッケージSHA-256 `c84d8fbb3fb82e5d3d5c6bd974c153b33dd8437ff96f4447a4ed0c68c7a939bf` はv0.1.0専用です。v1.0.0の検証には使用しないでください。
+
+Release作成手順は [docs/RELEASE.md](docs/RELEASE.md) を参照してください。
 
 ### 開発用インストール
 
@@ -118,7 +124,9 @@ SHA-256: c84d8fbb3fb82e5d3d5c6bd974c153b33dd8437ff96f4447a4ed0c68c7a939bf
 
 ## 更新
 
-v0.1.0の`.pext`インストール試験では、既存の監視状態が維持されることを確認済みです。更新時は念のためPlayniteまたはプラグインユーザーデータをバックアップしてから、新しい検証済みパッケージへ更新してください。
+v0.1.0の`.pext`インストール試験では、既存の監視状態が維持されることを確認済みです。v1.0.0でもTracking Schemaは`1`のままです。
+
+更新時は念のためPlayniteまたはプラグインユーザーデータをバックアップしてから、新しい検証済みパッケージへ更新してください。
 
 追跡データにはSchemaVersionがあります。現在のSchemaは`1`です。現在の実装より新しいSchemaの`tracking.json`を検出した場合は、**安全のためチェックと保存を無効化し、古い実装で上書きしません**。
 
@@ -134,7 +142,7 @@ v0.1.0の`.pext`インストール試験では、既存の監視状態が維持�
 
 ### 1. DLsiteリンクを登録する
 
-対象ゲームのPlaynite `Links` に、DLsiteの商品URLを登録します。v0.1.0はURLの`/product_id/<作品ID>`部分から作品IDを取得します。
+対象ゲームのPlaynite `Links` に、DLsiteの商品URLを登録します。現在の実装はURLの`/product_id/<作品ID>`部分から作品IDを取得します。
 
 対応する作品ID形式は、現在の実装では**英字2文字 + 6桁または8桁の数字**です。
 
@@ -302,11 +310,10 @@ Playnite終了時に更新処理が実行中の場合、競合する最終保存
 ## 制限事項・未確認事項
 
 - DLsiteの商品ページHTML構造が変わると解析できなくなる可能性があります。
-- v0.1.0の対応作品IDは英字2文字 + 6桁または8桁の数字です。
+- v1.0.0の対応作品IDは英字2文字 + 6桁または8桁の数字です。
 - 自動チェック・自動ダウンロード・自動パッチ適用はありません。
 - Coreは自動テストされていますが、Playnite SDKとのUI統合は実機スモークテストが中心です。
 - CI/GitHub Actionsは未導入です。
-- GitHub Release/Tagは現時点で未作成・未確認です。
 - Playniteによるアンインストール時のユーザーデータ削除挙動は、このリポジトリだけでは未確認です。
 
 ## トラブルシューティング
@@ -335,7 +342,9 @@ Windowsで一括検証:
 tools\Validate-Build.cmd
 ```
 
-このゲートは.NET 8 SDK / .NET Framework 4.6.2 Targeting Pack、Coreテスト63ケース、`net462`プラグインビルド、必須成果物、禁止ランタイムDLLの非同梱、`extension.yaml`の基本整合性を確認します。
+このゲートは.NET 8 SDK / .NET Framework 4.6.2 Targeting Pack、Coreテスト、`net462`プラグインビルド、必須成果物、禁止ランタイムDLLの非同梱、`extension.yaml`の基本整合性を確認します。
+
+v0.1.0の保存済み検証ではCoreテスト63ケースがPASSしています。v1.0.0公開用成果物はVersion metadata更新後にこのゲートを再実行してください。
 
 実機確認は [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md) のGate A〜Fを順番に実施してください。
 
@@ -354,8 +363,8 @@ DLsite-Update-Monitor/
 ├─ DEVELOPMENT.md                      # 開発・保守・引き継ぎ
 ├─ CHANGELOG.md                        # バージョン履歴
 ├─ BUILD.md                            # ビルドと検証手順
-├─ IMPLEMENTATION_NOTES.md             # 安全設計の既存詳細メモ
-└─ RELEASE_STATUS.md                   # v0.1.0最終検証記録
+├─ IMPLEMENTATION_NOTES.md             # 旧リンク互換の安全設計インデックス
+└─ RELEASE_STATUS.md                   # v0.1.0正式公開前の検証証跡
 ```
 
 ## 開発者向け資料
@@ -364,11 +373,12 @@ DLsite-Update-Monitor/
 - [CHANGELOG.md](CHANGELOG.md) — バージョン履歴
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — コンポーネント・データフロー・状態設計
 - [docs/RELEASE.md](docs/RELEASE.md) — リリース手順とチェックリスト
+- [docs/RELEASE_NOTES_1.0.0.md](docs/RELEASE_NOTES_1.0.0.md) — v1.0.0 GitHub Release用ノート
 - [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — 詳細な診断と復旧
 - [BUILD.md](BUILD.md) — ビルド・自動検証
-- [IMPLEMENTATION_NOTES.md](IMPLEMENTATION_NOTES.md) — 実装上の重要ルール
+- [IMPLEMENTATION_NOTES.md](IMPLEMENTATION_NOTES.md) — 旧リンク互換インデックス
 - [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md) — Playnite実機スモークテスト
-- [RELEASE_STATUS.md](RELEASE_STATUS.md) — v0.1.0の検証記録
+- [RELEASE_STATUS.md](RELEASE_STATUS.md) — v0.1.0正式公開前の検証記録
 
 ## License
 
