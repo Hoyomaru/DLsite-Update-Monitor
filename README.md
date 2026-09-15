@@ -31,6 +31,7 @@ DLsite作品を多数管理していると、各商品ページを手作業で�
 - v1.1.0 最終`.pext`インストール試験: **PASS**
 - Tracking Schema: **1**
 - GitHub Actions / CI: **導入済み**
+- License: **MIT**
 
 v1.1.0は、永続化・URL信頼境界・失敗分離の安全性強化と、診断・再確認・監視詳細・孤立データ整理を中心とした安定化Releaseです。Playnite 10.56で段階的なSmoke Test Gate A〜Gを実施し、Version 1.1.0の最終CI Artifactでも短縮Smoke Testと`.pext`インストール試験を完了しています。
 
@@ -363,7 +364,6 @@ Playnite終了時に更新処理が実行中の場合、競合する最終保存
 - CoreとWindows Plugin buildはGitHub Actionsで自動検証しますが、Playnite SDKとの実際のUI・DB統合は実機Smoke Testが必要です。
 - v1.1.0はPlaynite 10.56でSmoke Test Gate A〜G、最終Artifact短縮Smoke、`.pext`インストール試験まで完了しています。
 - Playniteによるアンインストール時のユーザーデータ削除挙動は、このリポジトリだけでは未確認です。
-- Licenseは未設定です。
 
 ## トラブルシューティング
 
@@ -392,7 +392,7 @@ Windowsで一括検証:
 tools\Validate-Build.cmd
 ```
 
-GitHub Actionsでは、Coreテスト + Static validationと、Windows上の`net462` Plugin build + payload境界検証を自動実行します。Windows jobは実機テスト用`DLsiteUpdateMonitor-smoke-<commit SHA>` Artifactも生成します。
+GitHub Actionsでは、Coreテスト + Static validationと、Windows上の`net462` Plugin build + payload境界検証を自動実行します。Windows jobは実機テスト用`DLsiteUpdateMonitor-smoke-<commit SHA>` Artifactも生成します。現在のUnreleased以降では、MIT `LICENSE`も検証済みpayloadへ同梱します。
 
 v1.1.0ではCoreテスト **72ケース**、Static validation、Windows Plugin build / payload境界検証がPASSしています。Playnite 10.56のSmoke Test Gate A〜G、最終Artifact短縮Smoke、`.pext`インストール試験も完了しています。
 
@@ -410,6 +410,7 @@ DLsite-Update-Monitor/
 │  └─ DLsiteUpdateMonitor.Core.Tests/  # Core自動テスト
 ├─ tools/                              # 検証・開発インストール・Release作成
 ├─ docs/                               # アーキテクチャ・Release・障害対応・実機テスト
+├─ LICENSE                             # MIT License
 ├─ README.md                           # 利用者向け主要ドキュメント
 ├─ DEVELOPMENT.md                      # 開発・保守・引き継ぎ
 ├─ CHANGELOG.md                        # バージョン履歴
@@ -434,6 +435,6 @@ DLsite-Update-Monitor/
 
 ## License
 
-**未設定です。**
+MIT Licenseで公開しています。詳細は [LICENSE](LICENSE) を参照してください。
 
-ライセンスが明示されるまでは、利用・再配布・派生物の扱いを勝手に推測しないでください。
+Copyright (c) 2026 Hoyomaru
