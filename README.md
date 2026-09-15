@@ -21,16 +21,18 @@ DLsite作品を多数管理していると、各商品ページを手作業で�
 ## 現在の状態
 
 - 現在の正式Version: **1.0.0**
-- リリース位置付け: **初回正式公開版**
 - GitHub Release: **v1.0.0 公開済み**
 - Git tag: **`v1.0.0`**
+- 開発状態: **v1.0.0以降のUnreleased改善を実機検証前**
 - Playnite実機検証基準: **10.56**
-- Core自動テスト: **63ケース PASS（v0.1.0正式公開前検証記録）**
-- `.pext`インストール試験: **PASS（v0.1.0正式公開前検証記録）**
+- 現行開発候補のCore自動テスト: **72ケース PASS（GitHub Actions）**
+- 現行開発候補のWindows Plugin build / payload境界検証: **PASS（GitHub Actions）**
+- 現行開発候補のPlaynite実機Smoke Test: **未実施**
+- 公開v1.0.0の`.pext`インストール試験根拠: **v0.1.0正式公開前検証記録**
 - Tracking Schema: **1**
-- GitHub Actions / CI: **未導入**
+- GitHub Actions / CI: **導入済み**
 
-v1.0.0は、v0.1.0として検証していた現行実装を初回正式公開版として位置付けたVersionです。監視ロジックとTracking Schemaはv0.1.0検証時点から変更していません。
+公開中のv1.0.0は、v0.1.0として検証していた実装を初回正式公開版として位置付けたVersionです。公開後のUnreleasedでは、永続化・URL信頼境界・失敗分離の安全性強化と、診断・再確認・監視詳細・孤立データ整理などを追加しています。これらは次回Releaseへ入れる前に [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md) のGate A〜Gで実機確認します。
 
 公開中のv1.0.0パッケージ:
 
@@ -44,20 +46,27 @@ v0.1.0の詳細な検証証跡と旧パッケージSHA-256は [RELEASE_STATUS.md
 ## 主な機能
 
 - Playniteの`Game.Links`からDLsite作品IDを解決
+- HTTPのDLsiteリンクをHTTPSへ正規化し、取得後URLもHTTPS + DLsite hostか検証
 - 全ゲームまたは選択ゲームの手動チェック
-- DLsiteリンク診断
+- エラー/要確認だったゲームだけを強制再確認
+- DLsiteリンク診断（問題ゲーム名・理由・曖昧な候補ProductIdを表示）
 - 初回チェック時のベースライン作成
 - `更新情報`の変更検出
 - `ファイル容量`の変更検出
 - 同一作品IDへのバッチ内重複通信の抑制
 - 24時間を既定値とするメモリキャッシュ
 - 更新状態のPlayniteタグ反映
+- 1ゲーム単位の監視詳細表示（Baseline / Current / LastObservation / Health / Error / History）
 - 「適用済み」「無視」「監視状態をリセット」操作
+- Playniteから削除済みゲームに対応する孤立tracking recordの確認付き整理
 - `tracking.json`の一時ファイル経由保存、バックアップ、破損保護
+- backup復旧後も正常backupを失わない保存処理
 - 429 / timeout / 一時ネットワークエラー / 5xxの再試行
+- 予期しない4xxを無駄に再試行しない処理
 - 不確定な解析結果や作品ID不一致時のfail-closed動作
+- GitHub ActionsによるCoreテスト、Windows Plugin build、payload境界検証
 
-## v1.0.0で行わないこと
+## 現在も行わないこと
 
 - 自動ダウンロード
 - 自動パッチ適用
@@ -72,7 +81,7 @@ v0.1.0の詳細な検証証跡と旧パッケージSHA-256は [RELEASE_STATUS.md
 
 ## 動作環境
 
-| 項目 | 現行v1.0.0 |
+| 項目 | 現行 |
 |---|---|
 | OS | Windows（Playnite実機検証環境） |
 | Playnite | 10.56 |
@@ -85,13 +94,13 @@ v0.1.0の詳細な検証証跡と旧パッケージSHA-256は [RELEASE_STATUS.md
 
 `Playnite.SDK.dll`、`AngleSharp.dll`、`Newtonsoft.Json.dll`はPlaynite本体側のランタイムを利用し、プラグインへ重複同梱しません。
 
-ネットワーク通信はDLsiteの商品ページへのHTTP GETです。外部APIキーやアクセストークンは使用しません。
+ネットワーク通信はDLsiteの商品ページへのHTTP GETです。登録された`http://`のDLsiteリンクはHTTPSへ正規化し、最終取得先もHTTPSかつ`dlsite.com` / `*.dlsite.com`であることを要求します。外部APIキーやアクセストークンは使用しません。
 
 ## インストール
 
 ### 一般利用者向け
 
-[v1.0.0 Release](https://github.com/Hoyomaru/DLsite-Update-Monitor/releases/tag/v1.0.0) のAssetsから次の`.pext`をダウンロードし、Playniteへインストールしてください。
+正式公開版を使う場合は [v1.0.0 Release](https://github.com/Hoyomaru/DLsite-Update-Monitor/releases/tag/v1.0.0) のAssetsから次の`.pext`をダウンロードし、Playniteへインストールしてください。
 
 ```text
 DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_0_0.pext
@@ -108,13 +117,13 @@ DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_0_0.pext
 `.pext`はソースツリーへコミットせず、GitHub Releasesで配布します。
 
 > [!WARNING]
-> v0.1.0の検証済みパッケージSHA-256 `c84d8fbb3fb82e5d3d5c6bd974c153b33dd8437ff96f4447a4ed0c68c7a939bf` はv0.1.0専用です。v1.0.0の検証には使用しないでください。
+> Unreleased開発候補はまだ正式Releaseではありません。実機Smoke Testが完了するまでは、公開v1.0.0と同等の検証済みReleaseとして扱わないでください。
 
 Release作成手順は [docs/RELEASE.md](docs/RELEASE.md) を参照してください。
 
-### 開発用インストール
+### 開発用・実機テスト用インストール
 
-まずリポジトリルートで検証ビルドを実行します。
+ローカルで検証ビルドする場合はリポジトリルートで実行します。
 
 ```powershell
 .\tools\Validate-Build.ps1
@@ -127,31 +136,35 @@ Release作成手順は [docs/RELEASE.md](docs/RELEASE.md) を参照してくだ�
 .\tools\Install-Dev.ps1
 ```
 
+GitHub Actionsの実機テスト候補では、Windows build jobが`DLsiteUpdateMonitor-smoke-<commit SHA>` Artifactを生成します。このArtifactを展開して同じ開発用拡張フォルダへ配置すれば、CIで実際にbuild・検証したバイナリをそのままSmoke Testできます。
+
 既定の配置先は次です。
 
 ```text
 %APPDATA%\Playnite\Extensions\DLsiteUpdateMonitor\
 ```
 
-既存フォルダがある場合、`artifacts\install-backups`へバックアップしてから置き換えます。配置後はPlayniteを再起動してください。
+既存フォルダがある場合はバックアップしてから置き換え、配置後にPlayniteを再起動してください。
 
 詳細は [BUILD.md](BUILD.md) を参照してください。
 
 ## 更新
 
-v0.1.0の`.pext`インストール試験では、既存の監視状態が維持されることを確認済みです。v1.0.0でもTracking Schemaは`1`のままです。
+公開v1.0.0と現在のUnreleased候補はTracking Schema `1`を維持しています。
 
 更新時は念のためPlayniteまたはプラグインユーザーデータをバックアップしてから、新しい検証済みパッケージへ更新してください。
 
-追跡データにはSchemaVersionがあります。現在のSchemaは`1`です。現在の実装より新しいSchemaの`tracking.json`を検出した場合は、**安全のためチェックと保存を無効化し、古い実装で上書きしません**。
+追跡データにはSchemaVersionがあります。現在の実装より新しいSchemaの`tracking.json`を検出した場合は、**安全のためチェックと保存を無効化し、古い実装で上書きしません**。
 
 将来Schema migrationを追加する場合は、互換性とロールバック手順を同時に文書化してください。
 
 ## アンインストール
 
-プラグイン自身にはアンインストーラや追跡データ削除処理はありません。Playnite側で拡張機能を削除した際にプラグインユーザーデータが自動削除されるかどうかは、現行リポジトリからは**未確認**です。
+プラグイン自身にはアンインストーラや追跡データ全削除処理はありません。Playnite側で拡張機能を削除した際にプラグインユーザーデータが自動削除されるかどうかは、現行リポジトリからは**未確認**です。
 
 完全削除が必要な場合は、先に必要なバックアップを取得し、Playniteが管理する本プラグインのユーザーデータディレクトリを確認したうえで、`tracking.json`、`tracking.backup.json`、破損保全ファイルなどの削除を検討してください。ユーザーデータの絶対パスはコードに固定されておらず、Playnite SDKの`GetPluginUserDataPath()`から取得します。
+
+なお、Playniteから個別ゲームを削除した結果として残ったtracking recordは、メインメニューの`孤立した追跡データを整理`で確認後に削除できます。
 
 ## 使用方法
 
@@ -171,7 +184,7 @@ Playniteのメインメニューから次を実行します。
 DLsite Update Monitor > DLsiteリンク診断
 ```
 
-診断はリンクを読み取るだけで、タイトル・Notes・Links・Sources・ジャンルなどを変更しません。
+診断はリンクを読み取るだけで、タイトル・Notes・Links・Sources・ジャンルなどを変更しません。問題がある場合はゲーム名と理由を表示し、曖昧なリンクでは候補ProductIdも表示します。
 
 ### 3. 初回チェックを行う
 
@@ -189,7 +202,13 @@ DLsite Update Monitor > DLsiteリンク診断
 - 差分なし → `Clean`
 - 安全に比較できない → 既存監視状態を維持してエラー/要確認扱い
 
-### 5. 変更を処理する
+`監視詳細を表示`では、確認済み基準、現在の比較可能状態、直近観測、CheckHealth、最終エラー、最近の履歴を1ゲーム単位で確認できます。
+
+### 5. エラーだけを再確認する
+
+一時的な通信失敗などが解消した後は、メインメニューの`エラー/要確認のゲームを再確認`を使えます。`LastCheckHealth`が`Healthy`でも`NeverChecked`でもない追跡済みゲームだけを対象に、キャッシュを使わず再確認します。
+
+### 6. 変更を処理する
 
 ゲーム右クリックメニューから次を選べます。
 
@@ -209,7 +228,9 @@ DLsite Update Monitor > DLsiteリンク診断
 |---|---|
 | 全ゲームを今すぐ確認 | キャッシュを使わず全ゲームを確認 |
 | キャッシュを利用して確認 | 有効なメモリキャッシュを利用して全ゲームを確認 |
-| DLsiteリンク診断 | リンクの正常 / なし / 不正 / 複数作品を集計 |
+| エラー/要確認のゲームを再確認 | 最後のCheckHealthが異常な追跡済みゲームだけを強制再確認 |
+| DLsiteリンク診断 | リンク状態を集計し、問題ゲーム名・理由・候補ProductIdを表示 |
+| 孤立した追跡データを整理 | Playniteに存在しないGameIdのtracking recordをPreview・確認後に削除 |
 | キャッシュをクリア | プロセス内のスナップショットキャッシュを消去 |
 
 ### ゲーム右クリックメニュー
@@ -217,23 +238,27 @@ DLsite Update Monitor > DLsiteリンク診断
 | メニュー | 動作 |
 |---|---|
 | 今すぐ確認 | 選択ゲームをキャッシュなしで確認 |
-| DLsiteページを開く | 1ゲーム選択時に登録済みDLsite URLを開く |
+| 監視詳細を表示 | 1ゲームのBaseline / Current / Observation / Health / Error / Historyを表示 |
+| DLsiteページを開く | 1ゲーム選択時に登録済みDLsite URLをHTTPSとして開く |
 | 現在の変更を適用済みにする | 現在状態を確認済み基準へ進める |
 | 現在の変更を無視する | 現在状態を無視済みとして確認済み基準へ進める |
 | 監視状態をリセット | 作品識別情報とベースラインをクリア |
 
 ## Playniteタグ
 
-設定`更新状態をPlayniteタグへ反映`が有効な場合、プラグインが管理するタグだけを変更します。
+設定`更新状態をPlayniteタグへ反映`が有効な場合、プラグインが所有する次の**2つの正確なタグ名だけ**を管理します。
+
+- `[DLsite更新] 更新あり`
+- `[DLsite更新] 配布物変更`
 
 | 監視状態 | タグ |
 |---|---|
 | `Clean` / `Uninitialized` | なし |
 | `PendingUpdateInfo` | `[DLsite更新] 更新あり` |
 | `PendingFileChange` | `[DLsite更新] 配布物変更` |
-| `PendingUpdateAndFileChange` | `[DLsite更新] 更新あり` |
+| `PendingUpdateAndFileChange` | **上記2タグの両方** |
 
-タグ連携を無効にした場合も、`[DLsite更新] `で始まるプラグイン管理タグだけを除去し、ユーザーの無関係なタグには触れません。
+`[DLsite更新] 自分用メモ`のように同じprefixを使うユーザー作成タグは、プラグイン所有とはみなしません。
 
 ## 設定
 
@@ -246,23 +271,23 @@ DLsite Update Monitor > DLsiteリンク診断
 | ゲームごとの履歴上限 | 50件 | 10〜500件 | `tracking.json`内の履歴保持件数 |
 | 更新状態をPlayniteタグへ反映 | ON | ON / OFF | プラグイン管理タグの同期 |
 
-設定はPlayniteのプラグイン設定機構で保存します。設定ファイルの物理パスはこのリポジトリ内では固定していません。
+設定はPlayniteのプラグイン設定機構で保存します。保存済み設定が読み込み可能でも数値範囲外だった場合は、Plugin起動を失敗させず、その項目を安全な既定値へ補正します。
 
 ## 内部処理の概要
 
 ```mermaid
 flowchart TD
-    A[Playnite Game.Links] --> B[DLsite作品IDを解決]
+    A[Playnite Game.Links] --> B[DLsite作品IDを解決 / HTTPS化]
     B -->|不正・複数作品| E[CheckHealthを記録して既存状態を維持]
     B --> C[DLsite商品ページをGET]
-    C -->|HTTP失敗| E
+    C -->|HTTP失敗・信頼できない最終URL| E
     C --> D[HTMLを解析・正規化]
     D -->|解析劣化| E
     D --> F[作品IDを再確認]
     F -->|不一致| E
     F --> G[AcknowledgedSnapshotと比較]
-    G --> H[tracking.jsonへ安全保存]
-    H --> I[必要に応じPlayniteタグを更新]
+    G --> H[clone上で更新してtracking.jsonへ安全保存]
+    H --> I[保存成功後だけlive状態とPlayniteタグを更新]
 ```
 
 詳細は [DEVELOPMENT.md](DEVELOPMENT.md) と [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) を参照してください。
@@ -290,7 +315,9 @@ flowchart TD
 - 最終エラー
 - 変更履歴
 
-保存時は`tracking.tmp`へ書き、直ちに再読み込みして検証した後に本ファイルを置き換えます。
+保存時は`tracking.tmp`へ書き、直ちに再読み込みして検証した後に本ファイルを置き換えます。状態変更操作は作業用cloneへ適用し、保存に成功したあとだけlive状態へ昇格します。
+
+primaryが破損して正常backupから復旧した場合は、次回保存で正常backupを破損primaryによって上書きしないよう、破損primaryだけを`.corrupt-*`へ退避してから保存します。
 
 ## エラー・再試行・復旧
 
@@ -304,10 +331,14 @@ HTTPは原則として次のように扱います。
 | 5xx | 再試行 |
 | 403 | 原則再試行しない |
 | 404 / 410 | `ProductUnavailable`、原則再試行しない |
+| その他4xx | client error、原則再試行しない |
+| HTTPS以外 / DLsite以外へ解決 | 信頼できない取得先として拒否 |
 | HTTP 200の利用不可ページ | `.error_box_work`を検出して`ProductUnavailable` |
 | 解析不能 / 比較不能 | `ParseError`または`ParseDegraded`。既存状態を進めない |
 | 別作品へのリダイレクト | `RedirectedToDifferentProduct`。ベースラインを流用しない |
 | 登録リンクの作品ID変更 | `LinkError`。明示リセットまで受け入れない |
+
+同じProductIdを複数ゲームが参照するバッチでは、Remote Productに共通する失敗だけを共有します。あるゲーム固有の旧ProductId不一致など`LocalRecord`失敗は、別ゲームへ伝播させません。
 
 Playnite終了時に更新処理が実行中の場合、競合する最終保存を行うより、処理中に行った途中保存を優先して最終保存をスキップします。
 
@@ -317,28 +348,32 @@ Playnite終了時に更新処理が実行中の場合、競合する最終保存
 
 - API Key、Access Token、Refresh Token、パスワードを使用・保存しません。
 - DLsiteへのGETでは`locale=ja_JP`と`loginchecked=1`の固定Cookieを設定します。ユーザーのログインセッションCookieを保存する実装ではありません。
+- DLsite URLはHTTP(S)だけを対象とし、HTTPはHTTPSへ正規化します。最終取得先もHTTPS + DLsite hostを要求します。
+- tracking JSONの読み込みには深い入れ子による過剰処理を抑える`MaxDepth`を設定しています。
 - 追跡データには商品URL、作品ID、取得した商品名、更新情報、ファイル容量、診断情報が保存されます。
 - ログには例外やURLが出力される可能性があります。問題報告時は共有前に内容を確認してください。
 - 診断処理はPlayniteゲームメタデータを変更しません。
-- タグ操作はプラグイン自身の`[DLsite更新] `タグだけを対象にします。
+- タグ操作は上記2つの正確なPlugin所有タグだけを対象にします。
 
 ## 制限事項・未確認事項
 
 - DLsiteの商品ページHTML構造が変わると解析できなくなる可能性があります。
-- v1.0.0の対応作品IDは英字2文字 + 6桁または8桁の数字です。
+- 対応作品IDは英字2文字 + 6桁または8桁の数字です。
 - 自動チェック・自動ダウンロード・自動パッチ適用はありません。
-- Coreは自動テストされていますが、Playnite SDKとのUI統合は実機スモークテストが中心です。
-- CI/GitHub Actionsは未導入です。
+- CoreとWindows Plugin buildはGitHub Actionsで自動検証しますが、Playnite SDKとの実際のUI・DB統合は実機Smoke Testが必要です。
+- 現在のUnreleased候補はCIまでPASSしていますが、Playnite実機Gate A〜Gはまだ未完了です。
 - Playniteによるアンインストール時のユーザーデータ削除挙動は、このリポジトリだけでは未確認です。
+- Licenseは未設定です。
 
 ## トラブルシューティング
 
 代表例:
 
 - **初回チェックで更新タグが付いた** → 正常仕様ではありません。処理を中止し、`tracking.json`とログを保全してください。
-- **403 / 429 / timeout** → 既存のベースラインや保留状態は維持される設計です。通信状況を確認し、時間を置いて再実行してください。
+- **403 / 429 / timeout** → 既存のベースラインや保留状態は維持される設計です。通信状況を確認し、`エラー/要確認のゲームを再確認`を利用できます。
 - **別の作品IDへリンクを変更したらLinkError** → 仕様です。作品を切り替える意図がある場合だけ`監視状態をリセット`してください。
 - **追跡JSONが壊れた** → 有効な`tracking.backup.json`があれば自動復旧を試みます。両方読めない場合は破損ファイルを保全して新規DBを作成します。
+- **削除済みゲームのrecordが残る** → `孤立した追跡データを整理`で候補を確認してから削除できます。
 - **プラグインが読み込まれない** → [BUILD.md](BUILD.md) の成果物と依存DLL方針を確認してください。
 
 詳細は [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) を参照してください。
@@ -357,16 +392,17 @@ Windowsで一括検証:
 tools\Validate-Build.cmd
 ```
 
-このゲートは.NET 8 SDK / .NET Framework 4.6.2 Targeting Pack、Coreテスト、`net462`プラグインビルド、必須成果物、禁止ランタイムDLLの非同梱、`extension.yaml`の基本整合性を確認します。
+GitHub Actionsでは、Coreテスト + Static validationと、Windows上の`net462` Plugin build + payload境界検証を自動実行します。Windows jobは実機テスト用`DLsiteUpdateMonitor-smoke-<commit SHA>` Artifactも生成します。
 
-v0.1.0の保存済み検証ではCoreテスト63ケースがPASSしています。v1.0.0は公開済みですが、このリポジトリ内にVersion metadata更新後の実機検証結果を追加記録していないため、公開後ドキュメントでは未確認事項を推測でPASS扱いしません。次のRelease候補では必ず現行Versionでゲートを再実行してください。
+現行Unreleased候補ではCoreテスト **72ケース** がPASSしています。公開v1.0.0の過去検証証跡と、Unreleased候補の新しいCI結果を混同しません。
 
-実機確認は [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md) のGate A〜Fを順番に実施してください。
+実機確認は [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md) のGate A〜Gを順番に実施してください。
 
 ## ファイル・ディレクトリ構成
 
 ```text
 DLsite-Update-Monitor/
+├─ .github/workflows/                   # Core / Windows Plugin CI
 ├─ src/
 │  ├─ DLsiteUpdateMonitor.Core/        # HTTP・解析・比較・状態・永続化
 │  └─ DLsiteUpdateMonitor.Plugin/      # Playnite統合・UI・タグ・設定
