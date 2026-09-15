@@ -25,6 +25,9 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      - name: Verify SDK
+        run: dotnet --version
+
       - name: Restore Core tests
         run: dotnet restore ./tests/DLsiteUpdateMonitor.Core.Tests/DLsiteUpdateMonitor.Core.Tests.csproj
 
