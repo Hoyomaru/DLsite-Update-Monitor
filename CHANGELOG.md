@@ -10,6 +10,15 @@
 
 次回Release向けの変更はここへ記録します。
 
+### Added
+
+- プロジェクトへMIT Licenseを付与し、ルートに`LICENSE`を追加
+
+### Changed
+
+- 検証済みPlugin payload、CI Smoke Test Artifact、将来の`.pext`へ`LICENSE`を同梱するようbuild / packaging手順を更新
+- README / DEVELOPMENT / BUILD / Release手順のライセンス表記と、v1.1.0公開後の現在状態を同期
+
 ## [1.1.0] - 2026-09-15
 
 v1.1.0は、永続化・URL信頼境界・失敗分離の安全性強化と、診断・再確認・監視詳細・孤立データ整理を中心とした安定化Releaseです。

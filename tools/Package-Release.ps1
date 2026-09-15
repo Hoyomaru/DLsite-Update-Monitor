@@ -41,7 +41,8 @@ if ($summary -notmatch 'validation passed') {
 $required = @(
     "DLsiteUpdateMonitor.dll",
     "DLsiteUpdateMonitor.Core.dll",
-    "extension.yaml"
+    "extension.yaml",
+    "LICENSE"
 )
 foreach ($name in $required) {
     if (-not (Test-Path (Join-Path $PluginOut $name))) {
@@ -137,6 +138,7 @@ Version: $version
 Package: $($package.FullName)
 SHA-256: $hashHex
 Payload source: $PluginOut
+License: MIT LICENSE included in packaged payload
 Build/test gate: PASS (artifacts\VALIDATION-SUMMARY.txt)
 Runtime gate: confirmed by -ConfirmRuntimeValidated
 Packaging tool: $toolbox
