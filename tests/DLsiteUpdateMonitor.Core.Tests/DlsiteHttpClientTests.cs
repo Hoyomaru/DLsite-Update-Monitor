@@ -73,6 +73,18 @@ namespace DLsiteUpdateMonitor.Core.Tests
         }
 
         [Fact]
+        public async Task BadRequest_IsClientErrorAndNotRetried()
+        {
+            var handler = new SequenceHandler(new HttpResponseMessage(HttpStatusCode.BadRequest));
+            using var client = Create(handler, retryCount: 2);
+
+            var result = await client.FetchAsync("https://www.dlsite.com/test", CancellationToken.None);
+
+            Assert.Equal(DlsiteFetchStatus.ClientError, result.Status);
+            Assert.Equal(1, handler.CallCount);
+        }
+
+        [Fact]
         public async Task NotFound_IsProductUnavailableAndNotRetried()
         {
             var handler = new SequenceHandler(new HttpResponseMessage(HttpStatusCode.NotFound));
