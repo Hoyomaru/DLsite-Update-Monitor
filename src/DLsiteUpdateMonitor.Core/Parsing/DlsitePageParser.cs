@@ -113,7 +113,9 @@ namespace DLsiteUpdateMonitor.Core.Parsing
                 diagnostics.Add("File size row is missing.");
             }
 
-            var actualProductId = ExtractProductId(resolvedUrl) ?? ExtractProductId(sourceUrl) ?? expectedProductId;
+            var actualProductId = !string.IsNullOrWhiteSpace(resolvedUrl)
+                ? ExtractProductId(resolvedUrl)
+                : (ExtractProductId(sourceUrl) ?? expectedProductId);
             var snapshot = new RemoteSnapshot
             {
                 ParserVersion = CurrentParserVersion,
