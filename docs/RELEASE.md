@@ -9,20 +9,25 @@
 
 ## 1. 現在の公開状況
 
-v1.0.0は2026-09-14に初回正式公開版として公開済みです。
+v1.1.0は2026-09-15に安定化Releaseとして公開済みです。
 
 ```text
-Version: 1.0.0
-Release title: DLsite Update Monitor v1.0.0
-Tag: v1.0.0
+Version: 1.1.0
+Release title: DLsite Update Monitor v1.1.0
+Tag: v1.1.0
+Tagged commit: e846cb245b22200a455001918c86115e95c5433c
 Tracking Schema: 1
-Package: DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_0_0.pext
-SHA-256: 676dc558e4c66265bab27a2d28a01cd53e541692a1627ab8661b13d4aa0cf9e0
+Package: DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_1_0.pext
+SHA-256: 9128b3ca11472b322d5307e6820b7fae902ca13d284b02645b87b9b3aace15de
 ```
 
-現在のUnreleased候補はv1.0.0公開後の変更を含みます。GitHub ActionsのCore / Windows buildはPASSしていますが、Playnite実機Smoke Test A〜Gはまだ未実施です。実機結果が揃う前に次Releaseとして扱いません。
+v1.1.0はCore / Windows CI、Playnite 10.56 Smoke Test Gate A〜G、Version 1.1.0最終Artifact短縮Smoke、最終`.pext`インストール試験まで完了しています。公開AssetのGitHub側digestも上記SHA-256と一致しています。
+
+次の変更は`Unreleased`として管理し、v1.1.0の検証結果と混同しません。
 
 過去v0.1.0検証証跡: [../RELEASE_STATUS.md](../RELEASE_STATUS.md)
+
+v1.1.0公開本文: [RELEASE_NOTES_1.1.0.md](RELEASE_NOTES_1.1.0.md)
 
 v1.0.0公開本文: [RELEASE_NOTES_1.0.0.md](RELEASE_NOTES_1.0.0.md)
 
@@ -175,7 +180,7 @@ Gate G: PASS / FAIL
 備考:
 ```
 
-過去のv0.1.0 / v1.0.0証跡と、新candidateの結果を混ぜません。
+過去のv0.1.0 / v1.0.0 / v1.1.0証跡と、新candidateの結果を混ぜません。
 
 ## 7. Versionを確定する
 
@@ -238,6 +243,12 @@ artifacts\release\RELEASE-SUMMARY.txt
 公開する`.pext`そのものからSHA-256を計算し、`SHA256SUMS.txt`とRelease記録へ反映します。
 
 過去Versionのhashを新Versionへ流用しません。
+
+v1.1.0公開値:
+
+```text
+9128b3ca11472b322d5307e6820b7fae902ca13d284b02645b87b9b3aace15de
+```
 
 v1.0.0公開値:
 
@@ -333,8 +344,25 @@ SHA256SUMS.txt
 - README / CHANGELOGが公開状態と一致
 - source treeへ`.pext`を誤commitしていない
 
-## 15. v1.0.0履歴
+## 15. 公開Release履歴
+
+### v1.1.0 — 2026-09-15
+
+- Release title: `DLsite Update Monitor v1.1.0`
+- Tag: `v1.1.0`
+- Tagged commit: `e846cb245b22200a455001918c86115e95c5433c`
+- Runtime release-prep merge commit: `5ba71c57771fee80455f33a908619bf37c38de41`
+- Package: `DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_1_0.pext`
+- SHA-256: `9128b3ca11472b322d5307e6820b7fae902ca13d284b02645b87b9b3aace15de`
+- Core 72 tests / Static validation / Windows Plugin build / payload boundary: **PASS**
+- Playnite 10.56 Smoke Gate A〜G: **PASS**
+- Version 1.1.0最終Artifact短縮Smoke: **PASS**
+- 最終`.pext`install test: **PASS**
+
+TagはRelease Notes追加後のdocs-only commitを指しています。Runtime payloadはその直前のrelease-prep merge以降変更されていません。
+
+### v1.0.0 — 2026-09-14
 
 公開v1.0.0のRelease/Tag/Assetは確認済みです。一方、v1.0.0 metadataでの独立したSmoke再実施結果を後から推測してPASS扱いしません。
 
-現在のUnreleased候補も同様に、**自動CIがgreenだから実機もPASSしたとは記録しません**。Smoke Gate A〜Gを実行して初めてRuntimeValidated候補になります。
+将来のUnreleased候補も同様に、**自動CIがgreenだから実機もPASSしたとは記録しません**。Smoke Gate A〜Gを実行して初めてRuntimeValidated候補になります。

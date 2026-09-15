@@ -73,7 +73,21 @@ v1.1.0の実装候補に対する自動検証:
 
 Playnite 10.56実機Smoke Test Gate A〜G: **すべてPASS**
 
-実機Smoke Testで使用した実装候補commitは`a7596bc077b8506512e526ded3e80a108fbdb94f`、Artifact ZIP SHA-256は`3c800fe84a2d28175f7d2baa1e3cbcc5f3b1f433b3c0b7a8cc10475678aa2f94`です。`release/1.1.0`では、この検証済み実装を`main`へ取り込んだ後、PluginのVersion metadataだけを`1.1.0`へ更新しています。正式公開前に、この最終Version metadataを含む候補でもCIと配布パッケージ検証を行います。
+実機Smoke Testで使用した実装候補commitは`a7596bc077b8506512e526ded3e80a108fbdb94f`、Artifact ZIP SHA-256は`3c800fe84a2d28175f7d2baa1e3cbcc5f3b1f433b3c0b7a8cc10475678aa2f94`です。`release/1.1.0`では、この検証済み実装を`main`へ取り込んだ後、PluginのVersion metadataだけを`1.1.0`へ更新しました。Version 1.1.0の最終CI Artifactでも短縮Smoke Testを実施し、最終`.pext`インストール試験までPASSしています。
+
+### Published
+
+2026-09-15にGitHub Releaseとして正式公開しました。
+
+```text
+Release title: DLsite Update Monitor v1.1.0
+Tag: v1.1.0
+Tagged commit: e846cb245b22200a455001918c86115e95c5433c
+Package: DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_1_0.pext
+SHA-256: 9128b3ca11472b322d5307e6820b7fae902ca13d284b02645b87b9b3aace15de
+```
+
+Release Assetsには`.pext`と`SHA256SUMS.txt`を公開し、GitHubが報告する`.pext` digestも上記SHA-256と一致しています。公開本文は [docs/RELEASE_NOTES_1.1.0.md](docs/RELEASE_NOTES_1.1.0.md) に保存しています。
 
 ## [1.0.0] - 2026-09-14
 

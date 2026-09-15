@@ -20,28 +20,28 @@ DLsite作品を多数管理していると、各商品ページを手作業で�
 
 ## 現在の状態
 
-- 現在の正式Version: **1.0.0**
-- GitHub Release: **v1.0.0 公開済み**
-- Git tag: **`v1.0.0`**
-- 開発状態: **v1.0.0以降のUnreleased改善を実機検証前**
+- 現在の正式Version: **1.1.0**
+- GitHub Release: **v1.1.0 公開済み**
+- Git tag: **`v1.1.0`**
+- 開発状態: **v1.1.0公開済み。次の変更はUnreleasedとして管理**
 - Playnite実機検証基準: **10.56**
-- 現行開発候補のCore自動テスト: **72ケース PASS（GitHub Actions）**
-- 現行開発候補のWindows Plugin build / payload境界検証: **PASS（GitHub Actions）**
-- 現行開発候補のPlaynite実機Smoke Test: **未実施**
-- 公開v1.0.0の`.pext`インストール試験根拠: **v0.1.0正式公開前検証記録**
+- v1.1.0 Core自動テスト: **72ケース PASS（GitHub Actions）**
+- v1.1.0 Windows Plugin build / payload境界検証: **PASS（GitHub Actions）**
+- v1.1.0 Playnite実機Smoke Test Gate A〜G: **すべてPASS**
+- v1.1.0 最終`.pext`インストール試験: **PASS**
 - Tracking Schema: **1**
 - GitHub Actions / CI: **導入済み**
 
-公開中のv1.0.0は、v0.1.0として検証していた実装を初回正式公開版として位置付けたVersionです。公開後のUnreleasedでは、永続化・URL信頼境界・失敗分離の安全性強化と、診断・再確認・監視詳細・孤立データ整理などを追加しています。これらは次回Releaseへ入れる前に [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md) のGate A〜Gで実機確認します。
+v1.1.0は、永続化・URL信頼境界・失敗分離の安全性強化と、診断・再確認・監視詳細・孤立データ整理を中心とした安定化Releaseです。Playnite 10.56で段階的なSmoke Test Gate A〜Gを実施し、Version 1.1.0の最終CI Artifactでも短縮Smoke Testと`.pext`インストール試験を完了しています。
 
-公開中のv1.0.0パッケージ:
+公開中のv1.1.0パッケージ:
 
 ```text
-DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_0_0.pext
-SHA-256: 676dc558e4c66265bab27a2d28a01cd53e541692a1627ab8661b13d4aa0cf9e0
+DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_1_0.pext
+SHA-256: 9128b3ca11472b322d5307e6820b7fae902ca13d284b02645b87b9b3aace15de
 ```
 
-v0.1.0の詳細な検証証跡と旧パッケージSHA-256は [RELEASE_STATUS.md](RELEASE_STATUS.md) を参照してください。
+v1.1.0の変更点と検証内容は [docs/RELEASE_NOTES_1.1.0.md](docs/RELEASE_NOTES_1.1.0.md) を参照してください。v0.1.0の詳細な検証証跡と旧パッケージSHA-256は [RELEASE_STATUS.md](RELEASE_STATUS.md) に保存しています。
 
 ## 主な機能
 
@@ -100,24 +100,24 @@ v0.1.0の詳細な検証証跡と旧パッケージSHA-256は [RELEASE_STATUS.md
 
 ### 一般利用者向け
 
-正式公開版を使う場合は [v1.0.0 Release](https://github.com/Hoyomaru/DLsite-Update-Monitor/releases/tag/v1.0.0) のAssetsから次の`.pext`をダウンロードし、Playniteへインストールしてください。
+正式公開版を使う場合は [v1.1.0 Release](https://github.com/Hoyomaru/DLsite-Update-Monitor/releases/tag/v1.1.0) のAssetsから次の`.pext`をダウンロードし、Playniteへインストールしてください。
 
 ```text
-DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_0_0.pext
+DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_1_0.pext
 ```
 
 公開AssetのSHA-256:
 
 ```text
-676dc558e4c66265bab27a2d28a01cd53e541692a1627ab8661b13d4aa0cf9e0
+9128b3ca11472b322d5307e6820b7fae902ca13d284b02645b87b9b3aace15de
 ```
 
 同じReleaseに添付されている`SHA256SUMS.txt`も確認用に利用できます。
 
 `.pext`はソースツリーへコミットせず、GitHub Releasesで配布します。
 
-> [!WARNING]
-> Unreleased開発候補はまだ正式Releaseではありません。実機Smoke Testが完了するまでは、公開v1.0.0と同等の検証済みReleaseとして扱わないでください。
+> [!NOTE]
+> `main`には今後Unreleasedの変更が入る可能性があります。安定版を利用する場合はGitHub Releaseのv1.1.0配布物を使用してください。
 
 Release作成手順は [docs/RELEASE.md](docs/RELEASE.md) を参照してください。
 
@@ -150,7 +150,7 @@ GitHub Actionsの実機テスト候補では、Windows build jobが`DLsiteUpdate
 
 ## 更新
 
-公開v1.0.0と現在のUnreleased候補はTracking Schema `1`を維持しています。
+公開v1.0.0とv1.1.0はどちらもTracking Schema `1`を使用しています。v1.0.0からv1.1.0への更新でTracking Schema migrationは発生しません。
 
 更新時は念のためPlayniteまたはプラグインユーザーデータをバックアップしてから、新しい検証済みパッケージへ更新してください。
 
@@ -361,7 +361,7 @@ Playnite終了時に更新処理が実行中の場合、競合する最終保存
 - 対応作品IDは英字2文字 + 6桁または8桁の数字です。
 - 自動チェック・自動ダウンロード・自動パッチ適用はありません。
 - CoreとWindows Plugin buildはGitHub Actionsで自動検証しますが、Playnite SDKとの実際のUI・DB統合は実機Smoke Testが必要です。
-- 現在のUnreleased候補はCIまでPASSしていますが、Playnite実機Gate A〜Gはまだ未完了です。
+- v1.1.0はPlaynite 10.56でSmoke Test Gate A〜G、最終Artifact短縮Smoke、`.pext`インストール試験まで完了しています。
 - Playniteによるアンインストール時のユーザーデータ削除挙動は、このリポジトリだけでは未確認です。
 - Licenseは未設定です。
 
@@ -394,9 +394,9 @@ tools\Validate-Build.cmd
 
 GitHub Actionsでは、Coreテスト + Static validationと、Windows上の`net462` Plugin build + payload境界検証を自動実行します。Windows jobは実機テスト用`DLsiteUpdateMonitor-smoke-<commit SHA>` Artifactも生成します。
 
-現行Unreleased候補ではCoreテスト **72ケース** がPASSしています。公開v1.0.0の過去検証証跡と、Unreleased候補の新しいCI結果を混同しません。
+v1.1.0ではCoreテスト **72ケース**、Static validation、Windows Plugin build / payload境界検証がPASSしています。Playnite 10.56のSmoke Test Gate A〜G、最終Artifact短縮Smoke、`.pext`インストール試験も完了しています。
 
-実機確認は [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md) のGate A〜Gを順番に実施してください。
+実機確認手順は [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md) のGate A〜Gを参照してください。
 
 ## ファイル・ディレクトリ構成
 
@@ -424,6 +424,7 @@ DLsite-Update-Monitor/
 - [CHANGELOG.md](CHANGELOG.md) — バージョン履歴
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — コンポーネント・データフロー・状態設計
 - [docs/RELEASE.md](docs/RELEASE.md) — リリース手順とチェックリスト
+- [docs/RELEASE_NOTES_1.1.0.md](docs/RELEASE_NOTES_1.1.0.md) — v1.1.0 公開Release記録
 - [docs/RELEASE_NOTES_1.0.0.md](docs/RELEASE_NOTES_1.0.0.md) — v1.0.0 公開Release記録
 - [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — 詳細な診断と復旧
 - [BUILD.md](BUILD.md) — ビルド・自動検証
