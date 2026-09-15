@@ -66,6 +66,7 @@ jobs:
           @('DLsiteUpdateMonitor.dll', 'DLsiteUpdateMonitor.Core.dll', 'extension.yaml') | ForEach-Object {
             if (-not (Test-Path (Join-Path $out $_))) { throw "Required build output missing: $_" }
           }
+          if (-not (Test-Path '.\LICENSE')) { throw 'Repository MIT LICENSE is missing.' }
           @('Playnite.SDK.dll', 'AngleSharp.dll', 'Newtonsoft.Json.dll') | ForEach-Object {
             if (Test-Path (Join-Path $out $_)) { throw "Forbidden runtime DLL bundled: $_" }
           }
@@ -79,6 +80,7 @@ jobs:
           @('DLsiteUpdateMonitor.dll', 'DLsiteUpdateMonitor.Core.dll', 'extension.yaml') | ForEach-Object {
             Copy-Item (Join-Path $out $_) $dest -Force
           }
+          Copy-Item '.\LICENSE' (Join-Path $dest 'LICENSE') -Force
           Get-ChildItem $out -Filter '*.pdb' -ErrorAction SilentlyContinue | Copy-Item -Destination $dest -Force
 
       - name: Upload smoke-test payload
