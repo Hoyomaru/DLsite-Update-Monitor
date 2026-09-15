@@ -124,6 +124,12 @@ namespace DLsiteUpdateMonitor
             };
             yield return new MainMenuItem
             {
+                Description = "エラー/要確認のゲームを再確認",
+                MenuSection = "@DLsite Update Monitor",
+                Action = _ => RecheckFailedGames()
+            };
+            yield return new MainMenuItem
+            {
                 Description = "DLsiteリンク診断",
                 MenuSection = "@DLsite Update Monitor",
                 Action = _ => DiagnoseLinks()
@@ -206,7 +212,9 @@ namespace DLsiteUpdateMonitor
                     progress.CurrentProgressValue = 0;
                     Task.Run(async () =>
                     {
-                        var productResults = new Dictionary<string, ProductCheckResult>(StringComparer.OrdinalIgnoreCase);
+                        // Keep only product-level reuse metadata here. Full HTTP/HTML payloads belong to
+                        // per-game results and the SnapshotCache, and should not remain rooted for the batch.
+                        var productResults = new Dictionary<string, BatchProductResult>(StringComparer.OrdinalIgnoreCase);
                         var processed = 0;
                         foreach (var game in games)
                         {
@@ -238,10 +246,10 @@ namespace DLsiteUpdateMonitor
 
                             var target = resolution.Target;
                             ProductCheckResult checkedResult;
-                            ProductCheckResult priorProductResult;
+                            BatchProductResult priorProductResult;
                             if (productResults.TryGetValue(target.ProductId, out priorProductResult))
                             {
-                                if (HasReusableRemoteObservation(priorProductResult))
+                                if (priorProductResult.HasReusableSnapshot)
                                 {
                                     // Reuse only the validated remote observation. Each game's local
                                     // comparison state still runs independently against that observation.
@@ -270,9 +278,10 @@ namespace DLsiteUpdateMonitor
                             else
                             {
                                 checkedResult = await CheckOneAsync(game, record, target, forceRefresh, progress.CancelToken).ConfigureAwait(false);
-                                if (ShouldRememberProductResult(checkedResult))
+                                var batchResult = BatchProductResult.From(checkedResult);
+                                if (batchResult != null)
                                 {
-                                    productResults[target.ProductId] = checkedResult;
+                                    productResults[target.ProductId] = batchResult;
                                 }
                             }
 
@@ -338,6 +347,28 @@ namespace DLsiteUpdateMonitor
             }
         }
 
+        private void RecheckFailedGames()
+        {
+            var games = PlayniteApi.Database.Games
+                .Where(game =>
+                {
+                    GameTrackingRecord record;
+                    return tracking.Games.TryGetValue(game.Id, out record)
+                        && record != null
+                        && record.LastCheckHealth != CheckHealth.Healthy
+                        && record.LastCheckHealth != CheckHealth.NeverChecked;
+                })
+                .ToList();
+
+            if (games.Count == 0)
+            {
+                PlayniteApi.Dialogs.ShowMessage("再確認が必要なゲームはありません。", "DLsite Update Monitor");
+                return;
+            }
+
+            CheckGames(games, true);
+        }
+
         private void ApplyTags(List<Guid> gameIds)
         {
             PlayniteApi.MainView.UIDispatcher.Invoke(() =>
@@ -382,20 +413,52 @@ namespace DLsiteUpdateMonitor
             var missing = 0;
             var invalid = 0;
             var ambiguous = 0;
+            var details = new List<string>();
+
             foreach (var game in PlayniteApi.Database.Games)
             {
-                switch (linkResolver.Resolve(game.Links?.Select(l => l.Url)).Status)
+                var resolution = linkResolver.Resolve(game.Links?.Select(l => l.Url));
+                switch (resolution.Status)
                 {
-                    case LinkResolutionStatus.Resolved: resolved++; break;
-                    case LinkResolutionStatus.NoDlsiteLink: missing++; break;
-                    case LinkResolutionStatus.Invalid: invalid++; break;
-                    case LinkResolutionStatus.Ambiguous: ambiguous++; break;
+                    case LinkResolutionStatus.Resolved:
+                        resolved++;
+                        break;
+                    case LinkResolutionStatus.NoDlsiteLink:
+                        missing++;
+                        details.Add("リンクなし: " + game.Name);
+                        break;
+                    case LinkResolutionStatus.Invalid:
+                        invalid++;
+                        details.Add("不正: " + game.Name + FormatReason(resolution.Reason));
+                        break;
+                    case LinkResolutionStatus.Ambiguous:
+                        ambiguous++;
+                        var ids = resolution.Candidates == null
+                            ? string.Empty
+                            : string.Join(", ", resolution.Candidates.Select(c => c.ProductId));
+                        details.Add("複数作品: " + game.Name + (string.IsNullOrWhiteSpace(ids) ? string.Empty : " [" + ids + "]"));
+                        break;
                 }
             }
 
+            const int detailLimit = 40;
+            var shown = details.Take(detailLimit).ToList();
+            var detailText = shown.Count == 0
+                ? string.Empty
+                : "\n\n要確認:\n" + string.Join("\n", shown);
+            if (details.Count > detailLimit)
+            {
+                detailText += "\n...ほか " + (details.Count - detailLimit) + " 件";
+            }
+
             PlayniteApi.Dialogs.ShowMessage(
-                $"正常: {resolved}\nリンクなし: {missing}\n不正なDLsiteリンク: {invalid}\n複数作品リンク: {ambiguous}",
+                $"正常: {resolved}\nリンクなし: {missing}\n不正なDLsiteリンク: {invalid}\n複数作品リンク: {ambiguous}" + detailText,
                 "DLsiteリンク診断");
+        }
+
+        private static string FormatReason(string reason)
+        {
+            return string.IsNullOrWhiteSpace(reason) ? string.Empty : " — " + reason;
         }
 
         private void OpenDlsitePage(List<Game> games)
@@ -437,7 +500,6 @@ namespace DLsiteUpdateMonitor
                     if (!working.Games.TryGetValue(game.Id, out record) || record == null) continue;
                     if (stateMachine.AcknowledgeCurrent(record, ignored, DateTimeOffset.UtcNow)) changed.Add(game.Id);
                 }
-
                 repository.Save(working, DateTimeOffset.UtcNow);
                 tracking = working;
                 ApplyTags(changed);
@@ -475,7 +537,6 @@ namespace DLsiteUpdateMonitor
                     stateMachine.ResetMonitoring(record, DateTimeOffset.UtcNow);
                     changed.Add(game.Id);
                 }
-
                 repository.Save(working, DateTimeOffset.UtcNow);
                 tracking = working;
                 ApplyTags(changed);
@@ -489,17 +550,6 @@ namespace DLsiteUpdateMonitor
             {
                 operationLock.Release();
             }
-        }
-
-        private static bool HasReusableRemoteObservation(ProductCheckResult result)
-        {
-            return result != null && result.HasReusableSnapshot;
-        }
-
-        private static bool ShouldRememberProductResult(ProductCheckResult result)
-        {
-            return result != null
-                && (result.HasReusableSnapshot || result.FailureScope == ProductCheckFailureScope.RemoteProduct);
         }
 
         private bool TryEnterMutationOperation()
@@ -529,6 +579,29 @@ namespace DLsiteUpdateMonitor
                 database.Games[gameId] = record;
             }
             return record;
+        }
+
+        private sealed class BatchProductResult
+        {
+            public bool HasReusableSnapshot { get; set; }
+            public CheckHealth Health { get; set; }
+            public string Message { get; set; }
+
+            public static BatchProductResult From(ProductCheckResult result)
+            {
+                if (result == null
+                    || (!result.HasReusableSnapshot && result.FailureScope != ProductCheckFailureScope.RemoteProduct))
+                {
+                    return null;
+                }
+
+                return new BatchProductResult
+                {
+                    HasReusableSnapshot = result.HasReusableSnapshot,
+                    Health = result.Health,
+                    Message = result.Message
+                };
+            }
         }
 
         private sealed class GameRunResult
