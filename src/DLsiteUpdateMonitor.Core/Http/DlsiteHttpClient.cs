@@ -1,5 +1,4 @@
 using System;
-using System.Globalization;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -113,7 +112,19 @@ namespace DLsiteUpdateMonitor.Core.Http
                     using (var response = await client.SendAsync(request, HttpCompletionOption.ResponseContentRead, timeoutCts.Token).ConfigureAwait(false))
                     {
                         var status = response.StatusCode;
-                        var resolvedUrl = response.RequestMessage?.RequestUri?.ToString() ?? url;
+                        var resolvedUri = response.RequestMessage?.RequestUri;
+                        var resolvedUrl = resolvedUri?.ToString() ?? url;
+
+                        if (!IsTrustedResolvedUri(resolvedUri))
+                        {
+                            return Error(
+                                DlsiteFetchStatus.UntrustedRedirect,
+                                status,
+                                url,
+                                resolvedUrl,
+                                attempt,
+                                "DLsite request resolved to an untrusted non-HTTPS or non-DLsite URL.");
+                        }
 
                         if (status == HttpStatusCode.OK)
                         {
@@ -224,6 +235,17 @@ namespace DLsiteUpdateMonitor.Core.Http
                 return value > TimeSpan.Zero ? value : TimeSpan.Zero;
             }
             return null;
+        }
+
+        private static bool IsTrustedResolvedUri(Uri uri)
+        {
+            if (uri == null || !uri.IsAbsoluteUri) return false;
+            if (!uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)) return false;
+
+            var host = uri.Host?.TrimEnd('.');
+            if (string.IsNullOrWhiteSpace(host)) return false;
+            return host.Equals("dlsite.com", StringComparison.OrdinalIgnoreCase)
+                || host.EndsWith(".dlsite.com", StringComparison.OrdinalIgnoreCase);
         }
 
         private static DlsiteFetchResult Error(DlsiteFetchStatus fetchStatus, HttpStatusCode status, string source, string resolved, int attempt, string message)
