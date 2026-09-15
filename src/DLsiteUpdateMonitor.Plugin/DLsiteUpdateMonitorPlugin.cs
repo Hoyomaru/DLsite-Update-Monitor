@@ -197,6 +197,7 @@ namespace DLsiteUpdateMonitor
             }
 
             var results = new List<GameRunResult>();
+            var working = TrackingDatabaseCloner.Clone(tracking);
             try
             {
                 var progressResult = PlayniteApi.Dialogs.ActivateGlobalProgress(progress =>
@@ -221,7 +222,7 @@ namespace DLsiteUpdateMonitor
                                 continue;
                             }
 
-                            var record = GetOrCreateRecord(game.Id);
+                            var record = GetOrCreateRecord(working, game.Id);
                             if (resolution.Status != LinkResolutionStatus.Resolved)
                             {
                                 var message = resolution.Reason ?? "DLsiteリンクを一意に解決できません。";
@@ -231,7 +232,7 @@ namespace DLsiteUpdateMonitor
                                     OccurredAtUtc = DateTimeOffset.UtcNow,
                                     Message = message
                                 }, DateTimeOffset.UtcNow);
-                                results.Add(GameRunResult.Failed(game, record, CheckHealth.LinkError, message));
+                                results.Add(GameRunResult.Failed(game, record, CheckHealth.LinkError));
                                 continue;
                             }
 
@@ -242,15 +243,14 @@ namespace DLsiteUpdateMonitor
                             {
                                 if (HasReusableRemoteObservation(priorProductResult))
                                 {
-                                    // Remote observation reuse is independent from the first game's local
-                                    // comparison state. A bad acknowledged snapshot in game A must not poison
-                                    // game B when both point at the same RJ product.
+                                    // Reuse only the validated remote observation. Each game's local
+                                    // comparison state still runs independently against that observation.
                                     checkedResult = await checkService.CheckAsync(record, target, false, progress.CancelToken).ConfigureAwait(false);
                                 }
                                 else
                                 {
-                                    // No safe remote observation exists, so share the first product-level failure
-                                    // and never retry the same product again inside one batch.
+                                    // Only remote/product failures are stored in productResults. A local
+                                    // record failure such as a changed registered product ID is never shared.
                                     stateMachine.RecordCheckFailure(record, priorProductResult.Health, new CheckError
                                     {
                                         Type = priorProductResult.Health,
@@ -261,6 +261,7 @@ namespace DLsiteUpdateMonitor
                                     checkedResult = new ProductCheckResult
                                     {
                                         ProductId = target.ProductId,
+                                        FailureScope = ProductCheckFailureScope.RemoteProduct,
                                         Health = priorProductResult.Health,
                                         Message = priorProductResult.Message
                                     };
@@ -268,37 +269,23 @@ namespace DLsiteUpdateMonitor
                             }
                             else
                             {
-                                try
+                                checkedResult = await CheckOneAsync(game, record, target, forceRefresh, progress.CancelToken).ConfigureAwait(false);
+                                if (ShouldRememberProductResult(checkedResult))
                                 {
-                                    checkedResult = await checkService.CheckAsync(record, target, forceRefresh, progress.CancelToken).ConfigureAwait(false);
+                                    productResults[target.ProductId] = checkedResult;
                                 }
-                                catch (Exception ex)
-                                {
-                                    Logger.Error(ex, "Unexpected check failure for " + game.Name);
-                                    stateMachine.RecordCheckFailure(record, CheckHealth.NetworkError, new CheckError
-                                    {
-                                        Type = CheckHealth.NetworkError,
-                                        OccurredAtUtc = DateTimeOffset.UtcNow,
-                                        Message = ex.Message,
-                                        Url = target.RegisteredUrl
-                                    }, DateTimeOffset.UtcNow);
-                                    checkedResult = new ProductCheckResult
-                                    {
-                                        ProductId = target.ProductId,
-                                        Health = CheckHealth.NetworkError,
-                                        Message = ex.Message
-                                    };
-                                }
-                                productResults[target.ProductId] = checkedResult;
                             }
 
                             results.Add(GameRunResult.From(game, record, checkedResult));
                             if (processed % 10 == 0)
                             {
-                                repository.Save(tracking, DateTimeOffset.UtcNow);
+                                repository.Save(working, DateTimeOffset.UtcNow);
+                                tracking = TrackingDatabaseCloner.Clone(working);
                             }
                         }
-                        repository.Save(tracking, DateTimeOffset.UtcNow);
+
+                        repository.Save(working, DateTimeOffset.UtcNow);
+                        tracking = working;
                     }).GetAwaiter().GetResult();
                 }, new GlobalProgressOptions("DLsite更新情報を確認中...", true) { IsIndeterminate = false });
 
@@ -306,7 +293,7 @@ namespace DLsiteUpdateMonitor
                 {
                     Logger.Error(progressResult.Error, "DLsite update check failed.");
                     PlayniteApi.Dialogs.ShowErrorMessage(
-                        "更新チェック中にエラーが発生しました。追跡データの安全性を優先してタグ反映を中止しました。\n\n"
+                        "更新チェック中にエラーが発生しました。最後に正常保存できた追跡状態を維持し、タグ反映を中止しました。\n\n"
                         + progressResult.Error.Message,
                         "DLsite Update Monitor");
                     return;
@@ -321,6 +308,36 @@ namespace DLsiteUpdateMonitor
             }
         }
 
+        private async Task<ProductCheckResult> CheckOneAsync(
+            Game game,
+            GameTrackingRecord record,
+            DlsiteTarget target,
+            bool forceRefresh,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                return await checkService.CheckAsync(record, target, forceRefresh, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "Unexpected check failure for " + game.Name);
+                stateMachine.RecordCheckFailure(record, CheckHealth.NetworkError, new CheckError
+                {
+                    Type = CheckHealth.NetworkError,
+                    OccurredAtUtc = DateTimeOffset.UtcNow,
+                    Message = ex.Message,
+                    Url = target.RegisteredUrl
+                }, DateTimeOffset.UtcNow);
+                return new ProductCheckResult
+                {
+                    ProductId = target.ProductId,
+                    Health = CheckHealth.NetworkError,
+                    Message = ex.Message
+                };
+            }
+        }
+
         private void ApplyTags(List<Guid> gameIds)
         {
             PlayniteApi.MainView.UIDispatcher.Invoke(() =>
@@ -332,7 +349,7 @@ namespace DLsiteUpdateMonitor
                         var game = PlayniteApi.Database.Games.Get(id);
                         if (game == null) continue;
                         GameTrackingRecord record;
-                        if (!tracking.Games.TryGetValue(id, out record)) continue;
+                        if (!tracking.Games.TryGetValue(id, out record) || record == null) continue;
                         tagService.Apply(game, record.MonitoringState, Settings.EnableTags);
                         PlayniteApi.Database.Games.Update(game);
                     }
@@ -412,21 +429,24 @@ namespace DLsiteUpdateMonitor
             if (!TryEnterMutationOperation()) return;
             try
             {
+                var working = TrackingDatabaseCloner.Clone(tracking);
                 var changed = new List<Guid>();
                 foreach (var game in games)
                 {
                     GameTrackingRecord record;
-                    if (!tracking.Games.TryGetValue(game.Id, out record)) continue;
+                    if (!working.Games.TryGetValue(game.Id, out record) || record == null) continue;
                     if (stateMachine.AcknowledgeCurrent(record, ignored, DateTimeOffset.UtcNow)) changed.Add(game.Id);
                 }
-                repository.Save(tracking, DateTimeOffset.UtcNow);
+
+                repository.Save(working, DateTimeOffset.UtcNow);
+                tracking = working;
                 ApplyTags(changed);
                 PlayniteApi.Dialogs.ShowMessage($"{changed.Count}件を{(ignored ? "無視済み" : "適用済み")}にしました。", "DLsite Update Monitor");
             }
             catch (Exception ex)
             {
                 Logger.Error(ex, "Failed to acknowledge DLsite tracking state.");
-                PlayniteApi.Dialogs.ShowErrorMessage("追跡状態を保存できませんでした。\n\n" + ex.Message, "DLsite Update Monitor");
+                PlayniteApi.Dialogs.ShowErrorMessage("追跡状態を保存できませんでした。変更は確定していません。\n\n" + ex.Message, "DLsite Update Monitor");
             }
             finally
             {
@@ -446,21 +466,24 @@ namespace DLsiteUpdateMonitor
                     "DLsite Update Monitor", MessageBoxButton.YesNo);
                 if (answer != MessageBoxResult.Yes) return;
 
+                var working = TrackingDatabaseCloner.Clone(tracking);
                 var changed = new List<Guid>();
                 foreach (var game in games)
                 {
                     GameTrackingRecord record;
-                    if (!tracking.Games.TryGetValue(game.Id, out record)) continue;
+                    if (!working.Games.TryGetValue(game.Id, out record) || record == null) continue;
                     stateMachine.ResetMonitoring(record, DateTimeOffset.UtcNow);
                     changed.Add(game.Id);
                 }
-                repository.Save(tracking, DateTimeOffset.UtcNow);
+
+                repository.Save(working, DateTimeOffset.UtcNow);
+                tracking = working;
                 ApplyTags(changed);
             }
             catch (Exception ex)
             {
                 Logger.Error(ex, "Failed to reset DLsite tracking state.");
-                PlayniteApi.Dialogs.ShowErrorMessage("追跡状態を保存できませんでした。\n\n" + ex.Message, "DLsite Update Monitor");
+                PlayniteApi.Dialogs.ShowErrorMessage("追跡状態を保存できませんでした。変更は確定していません。\n\n" + ex.Message, "DLsite Update Monitor");
             }
             finally
             {
@@ -471,6 +494,12 @@ namespace DLsiteUpdateMonitor
         private static bool HasReusableRemoteObservation(ProductCheckResult result)
         {
             return result != null && result.HasReusableSnapshot;
+        }
+
+        private static bool ShouldRememberProductResult(ProductCheckResult result)
+        {
+            return result != null
+                && (result.HasReusableSnapshot || result.FailureScope == ProductCheckFailureScope.RemoteProduct);
         }
 
         private bool TryEnterMutationOperation()
@@ -491,13 +520,13 @@ namespace DLsiteUpdateMonitor
             return false;
         }
 
-        private GameTrackingRecord GetOrCreateRecord(Guid gameId)
+        private static GameTrackingRecord GetOrCreateRecord(TrackingDatabase database, Guid gameId)
         {
             GameTrackingRecord record;
-            if (!tracking.Games.TryGetValue(gameId, out record))
+            if (!database.Games.TryGetValue(gameId, out record) || record == null)
             {
                 record = new GameTrackingRecord { PlayniteGameId = gameId };
-                tracking.Games[gameId] = record;
+                database.Games[gameId] = record;
             }
             return record;
         }
@@ -511,7 +540,7 @@ namespace DLsiteUpdateMonitor
             public ComparisonOutcome? ComparisonOutcome { get; set; }
 
             public static GameRunResult CreateSkipped(Game game) => new GameRunResult { GameId = game.Id, Skipped = true };
-            public static GameRunResult Failed(Game game, GameTrackingRecord record, CheckHealth health, string message) => new GameRunResult
+            public static GameRunResult Failed(Game game, GameTrackingRecord record, CheckHealth health) => new GameRunResult
             {
                 GameId = game.Id,
                 Health = health,
