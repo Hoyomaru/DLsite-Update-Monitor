@@ -44,6 +44,7 @@ Release前に、意図したsource / tests / docsが候補branchへ揃ってい�
 - `.github/workflows`
 - tools
 - README / DEVELOPMENT / CHANGELOG / docs
+- `LICENSE`
 - `.gitignore`
 
 `artifacts/`や`.pext`はsourceへcommitしません。
@@ -67,6 +68,7 @@ Windows:
 - Plugin restore
 - `.NET Framework 4.6.2`向けPlugin build
 - 必須payload確認
+- ルートのMIT `LICENSE`存在確認
 - 禁止runtime DLL非同梱確認
 - Smoke Test用payloadのArtifact化
 
@@ -105,8 +107,11 @@ Windows CI jobは次をArtifactへstageします。
 DLsiteUpdateMonitor.dll
 DLsiteUpdateMonitor.Core.dll
 extension.yaml
+LICENSE
 *.pdb（存在する場合）
 ```
+
+`LICENSE`はリポジトリルートのMIT License本文をそのままstageします。実機確認したcandidateからLicense noticeを落とした別payloadをRelease用に作成しないでください。
 
 Artifact名:
 
@@ -228,7 +233,7 @@ Toolboxを自動検出できない場合:
 
 `-ConfirmRuntimeValidated`はSmoke Testを実施したという運用上の明示確認です。未実施なのにflagだけ付けません。
 
-Packaging scriptは必須payload、禁止runtime DLL、extension Id / Version、Toolbox、生成`.pext`件数等を検査します。
+Packaging scriptは必須payload（`LICENSE`を含む）、禁止runtime DLL、extension Id / Version、Toolbox、生成`.pext`件数等を検査します。
 
 生成物:
 
@@ -266,6 +271,7 @@ Release候補の`.pext`そのものをPlayniteへinstallして確認します。
 - 既存tracking状態を期待どおり引き継ぐ
 - 代表的checkが動く
 - Plugin所有外tag / metadataに想定外変更がない
+- パッケージ元の検証済みpayloadにMIT `LICENSE`が含まれている
 
 Build outputを直接配置したSmokeだけで、`.pext` install確認の代わりにしません。
 
@@ -286,6 +292,7 @@ Build outputを直接配置したSmokeだけで、`.pext` install確認の代わ
 - install/update
 - current features
 - known limitations
+- License表記
 
 ### DEVELOPMENT / ARCHITECTURE
 
@@ -323,6 +330,7 @@ DLsite Update Monitor vX.Y.Z
 - install/update注意
 - 制限事項
 - 非公式ツールであること
+- License（MIT）
 - Asset名
 - SHA-256 / `SHA256SUMS.txt`
 
@@ -342,6 +350,8 @@ SHA256SUMS.txt
 - Asset名が正しい
 - 公開Asset hashを確認
 - README / CHANGELOGが公開状態と一致
+- ルート`LICENSE`とREADMEのLicense表記が一致
+- 配布`.pext`が`LICENSE`を含む検証済みpayloadから生成されている
 - source treeへ`.pext`を誤commitしていない
 
 ## 15. 公開Release履歴
