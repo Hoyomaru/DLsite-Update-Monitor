@@ -36,3 +36,34 @@ jobs:
 
       - name: Static validation
         run: python ./tools/Static-Validate.py
+
+  plugin-build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Verify SDK
+        run: dotnet --version
+
+      - name: Restore Playnite plugin
+        run: dotnet restore .\src\DLsiteUpdateMonitor.Plugin\DLsiteUpdateMonitor.Plugin.csproj
+
+      - name: Build Playnite plugin
+        run: dotnet build .\src\DLsiteUpdateMonitor.Plugin\DLsiteUpdateMonitor.Plugin.csproj -c Release --no-restore
+
+      - name: Validate plugin payload boundary
+        shell: pwsh
+        run: |
+          $out = '.\src\DLsiteUpdateMonitor.Plugin\bin\Release'
+          @('DLsiteUpdateMonitor.dll', 'DLsiteUpdateMonitor.Core.dll', 'extension.yaml') | ForEach-Object {
+            if (-not (Test-Path (Join-Path $out $_))) { throw "Required build output missing: $_" }
+          }
+          @('Playnite.SDK.dll', 'AngleSharp.dll', 'Newtonsoft.Json.dll') | ForEach-Object {
+            if (Test-Path (Join-Path $out $_)) { throw "Forbidden runtime DLL bundled: $_" }
+          }
