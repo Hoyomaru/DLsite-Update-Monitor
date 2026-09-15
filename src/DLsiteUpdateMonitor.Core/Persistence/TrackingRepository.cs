@@ -34,6 +34,7 @@ namespace DLsiteUpdateMonitor.Core.Persistence
         private readonly string tempPath;
         private readonly object sync = new object();
         private bool preserveCorruptFilesOnNextSave;
+        private bool preserveCorruptPrimaryOnNextSave;
 
         public TrackingRepository(string directory)
         {
@@ -73,6 +74,10 @@ namespace DLsiteUpdateMonitor.Core.Persistence
                     try
                     {
                         db = ReadAndValidate(backupPath);
+                        if (primaryError != null)
+                        {
+                            preserveCorruptPrimaryOnNextSave = true;
+                        }
                         return new TrackingLoadResult
                         {
                             Database = db,
@@ -87,6 +92,7 @@ namespace DLsiteUpdateMonitor.Core.Persistence
                     catch (Exception backupError)
                     {
                         preserveCorruptFilesOnNextSave = true;
+                        preserveCorruptPrimaryOnNextSave = false;
                         return new TrackingLoadResult
                         {
                             Database = CreateNew(),
@@ -120,7 +126,14 @@ namespace DLsiteUpdateMonitor.Core.Persistence
                 {
                     PreserveCorruptFiles(nowUtc);
                     preserveCorruptFilesOnNextSave = false;
+                    preserveCorruptPrimaryOnNextSave = false;
                 }
+                else if (preserveCorruptPrimaryOnNextSave)
+                {
+                    PreserveCorruptPrimary(nowUtc);
+                    preserveCorruptPrimaryOnNextSave = false;
+                }
+
                 database.LastSavedAtUtc = nowUtc;
                 var json = JsonConvert.SerializeObject(database, Formatting.Indented);
 
@@ -149,12 +162,17 @@ namespace DLsiteUpdateMonitor.Core.Persistence
             }
         }
 
-
         private void PreserveCorruptFiles(DateTimeOffset nowUtc)
         {
             var stamp = nowUtc.UtcDateTime.ToString("yyyyMMdd-HHmmss");
             PreserveOne(primaryPath, primaryPath + ".corrupt-" + stamp);
             PreserveOne(backupPath, backupPath + ".corrupt-" + stamp);
+        }
+
+        private void PreserveCorruptPrimary(DateTimeOffset nowUtc)
+        {
+            var stamp = nowUtc.UtcDateTime.ToString("yyyyMMdd-HHmmss");
+            PreserveOne(primaryPath, primaryPath + ".corrupt-" + stamp);
         }
 
         private static void PreserveOne(string source, string destination)
