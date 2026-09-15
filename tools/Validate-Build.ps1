@@ -10,6 +10,7 @@ $Root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $Artifacts = Join-Path $Root "artifacts"
 $PluginOut = Join-Path $Artifacts "plugin"
 $TestResults = Join-Path $Artifacts "TestResults"
+$LicensePath = Join-Path $Root "LICENSE"
 
 function Fail([string]$Message) {
     Write-Host "ERROR: $Message" -ForegroundColor Red
@@ -34,6 +35,10 @@ if (-not ($sdks | Where-Object { $_ -match '^8\.' })) {
 $frameworkRef = Join-Path ${env:ProgramFiles(x86)} "Reference Assemblies\Microsoft\Framework\.NETFramework\v4.6.2"
 if (-not (Test-Path $frameworkRef)) {
     Fail ".NET Framework 4.6.2 Targeting Pack が見つかりません: $frameworkRef"
+}
+
+if (-not (Test-Path $LicensePath)) {
+    Fail "MIT license file is missing: $LicensePath"
 }
 
 if (Test-Path $Artifacts) {
@@ -65,20 +70,33 @@ try {
     if ($LASTEXITCODE -ne 0) { Fail "Plugin build failed." }
 
     $BuildOut = Join-Path $Root "src\DLsiteUpdateMonitor.Plugin\bin\$Configuration"
-    $required = @(
+    $requiredBuildOutputs = @(
         "DLsiteUpdateMonitor.dll",
         "DLsiteUpdateMonitor.Core.dll",
         "extension.yaml"
     )
-    foreach ($name in $required) {
+    foreach ($name in $requiredBuildOutputs) {
         $path = Join-Path $BuildOut $name
         if (-not (Test-Path $path)) { Fail "Required build output is missing: $path" }
         Copy-Item $path $PluginOut -Force
     }
 
+    Copy-Item $LicensePath (Join-Path $PluginOut "LICENSE") -Force
     Get-ChildItem $BuildOut -Filter "*.pdb" -ErrorAction SilentlyContinue | Copy-Item -Destination $PluginOut -Force
 
     Write-Host "`n[4/4] Validate extension payload" -ForegroundColor Cyan
+    $requiredPayload = @(
+        "DLsiteUpdateMonitor.dll",
+        "DLsiteUpdateMonitor.Core.dll",
+        "extension.yaml",
+        "LICENSE"
+    )
+    foreach ($name in $requiredPayload) {
+        if (-not (Test-Path (Join-Path $PluginOut $name))) {
+            Fail "Required payload file is missing: $name"
+        }
+    }
+
     $forbidden = @("Playnite.SDK.dll", "AngleSharp.dll", "Newtonsoft.Json.dll")
     foreach ($name in $forbidden) {
         if (Test-Path (Join-Path $PluginOut $name)) {
@@ -100,6 +118,7 @@ Configuration: $Configuration
 Validated at: $(Get-Date -Format o)
 Core test gate: dotnet test completed successfully
 Plugin output: $PluginOut
+License: MIT LICENSE included in plugin payload
 Runtime dependency policy: Playnite.SDK / AngleSharp / Newtonsoft.Json not bundled
 Next gate: disposable Playnite profile smoke test (docs\SMOKE_TEST.md)
 "@
