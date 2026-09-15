@@ -47,7 +47,7 @@ try {
     & dotnet restore ".\tests\DLsiteUpdateMonitor.Core.Tests\DLsiteUpdateMonitor.Core.Tests.csproj"
     if ($LASTEXITCODE -ne 0) { Fail "Core test restore failed." }
 
-    Write-Host "`n[2/4] Run Core tests (expected: 63 cases)" -ForegroundColor Cyan
+    Write-Host "`n[2/4] Run Core tests" -ForegroundColor Cyan
     & dotnet test ".\tests\DLsiteUpdateMonitor.Core.Tests\DLsiteUpdateMonitor.Core.Tests.csproj" `
         -c $Configuration `
         --no-restore `
@@ -98,7 +98,7 @@ try {
 DLsite Update Monitor validation passed.
 Configuration: $Configuration
 Validated at: $(Get-Date -Format o)
-Core test gate: dotnet test completed successfully (expected test cases: 63)
+Core test gate: dotnet test completed successfully
 Plugin output: $PluginOut
 Runtime dependency policy: Playnite.SDK / AngleSharp / Newtonsoft.Json not bundled
 Next gate: disposable Playnite profile smoke test (docs\SMOKE_TEST.md)

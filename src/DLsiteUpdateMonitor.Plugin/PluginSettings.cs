@@ -7,14 +7,20 @@ namespace DLsiteUpdateMonitor
 {
     public sealed class PluginSettings : ObservableObject, ISettings
     {
+        private const int DefaultRequestIntervalSeconds = 2;
+        private const int DefaultTimeoutSeconds = 20;
+        private const int DefaultRetryCount = 2;
+        private const int DefaultCacheHours = 24;
+        private const int DefaultHistoryLimit = 50;
+
         private readonly DLsiteUpdateMonitorPlugin plugin;
         private PluginSettings previous;
 
-        public int RequestIntervalSeconds { get; set; } = 2;
-        public int TimeoutSeconds { get; set; } = 20;
-        public int RetryCount { get; set; } = 2;
-        public int CacheHours { get; set; } = 24;
-        public int HistoryLimit { get; set; } = 50;
+        public int RequestIntervalSeconds { get; set; } = DefaultRequestIntervalSeconds;
+        public int TimeoutSeconds { get; set; } = DefaultTimeoutSeconds;
+        public int RetryCount { get; set; } = DefaultRetryCount;
+        public int CacheHours { get; set; } = DefaultCacheHours;
+        public int HistoryLimit { get; set; } = DefaultHistoryLimit;
         public bool EnableTags { get; set; } = true;
 
         public PluginSettings() { }
@@ -27,11 +33,16 @@ namespace DLsiteUpdateMonitor
                 var saved = plugin.LoadPluginSettings<PluginSettings>();
                 if (saved != null)
                 {
-                    RequestIntervalSeconds = saved.RequestIntervalSeconds;
-                    TimeoutSeconds = saved.TimeoutSeconds;
-                    RetryCount = saved.RetryCount;
-                    CacheHours = saved.CacheHours;
-                    HistoryLimit = saved.HistoryLimit;
+                    RequestIntervalSeconds = IsInRange(saved.RequestIntervalSeconds, 1, 60)
+                        ? saved.RequestIntervalSeconds : DefaultRequestIntervalSeconds;
+                    TimeoutSeconds = IsInRange(saved.TimeoutSeconds, 5, 120)
+                        ? saved.TimeoutSeconds : DefaultTimeoutSeconds;
+                    RetryCount = IsInRange(saved.RetryCount, 0, 5)
+                        ? saved.RetryCount : DefaultRetryCount;
+                    CacheHours = IsInRange(saved.CacheHours, 1, 168)
+                        ? saved.CacheHours : DefaultCacheHours;
+                    HistoryLimit = IsInRange(saved.HistoryLimit, 10, 500)
+                        ? saved.HistoryLimit : DefaultHistoryLimit;
                     EnableTags = saved.EnableTags;
                 }
             }
@@ -66,17 +77,22 @@ namespace DLsiteUpdateMonitor
         public bool VerifySettings(out List<string> errors)
         {
             errors = new List<string>();
-            if (RequestIntervalSeconds < 1 || RequestIntervalSeconds > 60)
+            if (!IsInRange(RequestIntervalSeconds, 1, 60))
                 errors.Add("リクエスト間隔は1～60秒にしてください。");
-            if (TimeoutSeconds < 5 || TimeoutSeconds > 120)
+            if (!IsInRange(TimeoutSeconds, 5, 120))
                 errors.Add("タイムアウトは5～120秒にしてください。");
-            if (RetryCount < 0 || RetryCount > 5)
+            if (!IsInRange(RetryCount, 0, 5))
                 errors.Add("リトライ回数は0～5回にしてください。");
-            if (CacheHours < 1 || CacheHours > 168)
+            if (!IsInRange(CacheHours, 1, 168))
                 errors.Add("キャッシュ有効期間は1～168時間にしてください。");
-            if (HistoryLimit < 10 || HistoryLimit > 500)
+            if (!IsInRange(HistoryLimit, 10, 500))
                 errors.Add("履歴上限は10～500件にしてください。");
             return errors.Count == 0;
+        }
+
+        private static bool IsInRange(int value, int min, int max)
+        {
+            return value >= min && value <= max;
         }
 
         private PluginSettings Copy()

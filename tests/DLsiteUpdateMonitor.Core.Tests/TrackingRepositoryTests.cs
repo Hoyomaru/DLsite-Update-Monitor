@@ -51,6 +51,54 @@ namespace DLsiteUpdateMonitor.Core.Tests
         }
 
         [Fact]
+        public void CorruptPrimary_LoadBackupThenSave_PreservesRecoverableBackup()
+        {
+            var id = Guid.NewGuid();
+            var repo = new TrackingRepository(directory);
+            var db = new TrackingDatabase { CreatedAtUtc = DateTimeOffset.UtcNow };
+            db.Games[id] = new GameTrackingRecord { PlayniteGameId = id, RequestedProductId = "RJ01234567" };
+
+            repo.Save(db, DateTimeOffset.Parse("2026-09-14T01:00:00Z"));
+            repo.Save(db, DateTimeOffset.Parse("2026-09-14T02:00:00Z"));
+
+            var primary = Path.Combine(directory, "tracking.json");
+            File.WriteAllText(primary, "{ definitely broken");
+
+            var recovered = repo.Load();
+            Assert.Equal(TrackingLoadSource.Backup, recovered.Source);
+            repo.Save(recovered.Database, DateTimeOffset.Parse("2026-09-14T03:00:00Z"));
+            Assert.NotEmpty(Directory.GetFiles(directory, "tracking.json.corrupt-*"));
+
+            // Prove the healthy backup survived the recovery save by corrupting the new primary too.
+            File.WriteAllText(primary, "{ broken again");
+            var secondRepo = new TrackingRepository(directory);
+            var secondRecovery = secondRepo.Load();
+
+            Assert.Equal(TrackingLoadSource.Backup, secondRecovery.Source);
+            Assert.True(secondRecovery.Database.Games.ContainsKey(id));
+        }
+
+        [Fact]
+        public void NullGameRecordInPrimary_UsesBackup()
+        {
+            var id = Guid.NewGuid();
+            var repo = new TrackingRepository(directory);
+            var db = new TrackingDatabase { CreatedAtUtc = DateTimeOffset.UtcNow };
+            db.Games[id] = new GameTrackingRecord { PlayniteGameId = id, RequestedProductId = "RJ01234567" };
+            repo.Save(db, DateTimeOffset.Parse("2026-09-14T01:00:00Z"));
+            repo.Save(db, DateTimeOffset.Parse("2026-09-14T02:00:00Z"));
+
+            File.WriteAllText(
+                Path.Combine(directory, "tracking.json"),
+                "{\"SchemaVersion\":1,\"Games\":{\"" + id + "\":null}}");
+
+            var loaded = repo.Load();
+
+            Assert.Equal(TrackingLoadSource.Backup, loaded.Source);
+            Assert.NotNull(loaded.Database.Games[id]);
+        }
+
+        [Fact]
         public void CorruptPrimaryWithoutBackup_IsPreservedBeforeNewSave()
         {
             var primary = Path.Combine(directory, "tracking.json");

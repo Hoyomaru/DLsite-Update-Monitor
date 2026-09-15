@@ -42,6 +42,13 @@ namespace DLsiteUpdateMonitor.Core.Services
                 }
 
                 sawDlsiteHost = true;
+                if (!uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
+                    && !uri.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase))
+                {
+                    sawMalformedDlsiteUrl = true;
+                    continue;
+                }
+
                 var match = ProductIdRegex.Match(uri.PathAndQuery);
                 if (!match.Success)
                 {
@@ -52,7 +59,7 @@ namespace DLsiteUpdateMonitor.Core.Services
                 candidates.Add(new DlsiteTarget
                 {
                     ProductId = match.Groups["id"].Value.ToUpperInvariant(),
-                    RegisteredUrl = raw.Trim()
+                    RegisteredUrl = CanonicalizeHttps(uri)
                 });
             }
 
@@ -88,7 +95,7 @@ namespace DLsiteUpdateMonitor.Core.Services
                 {
                     Status = LinkResolutionStatus.Invalid,
                     Candidates = distinct,
-                    Reason = "A DLsite URL was found, but no supported product_id could be extracted."
+                    Reason = "A DLsite URL was found, but it was not a supported HTTP(S) product_id URL."
                 };
             }
 
@@ -105,6 +112,21 @@ namespace DLsiteUpdateMonitor.Core.Services
             var normalized = host.TrimEnd('.');
             return normalized.Equals("dlsite.com", StringComparison.OrdinalIgnoreCase)
                 || normalized.EndsWith(".dlsite.com", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string CanonicalizeHttps(Uri uri)
+        {
+            if (uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+            {
+                return uri.AbsoluteUri;
+            }
+
+            var builder = new UriBuilder(uri)
+            {
+                Scheme = Uri.UriSchemeHttps,
+                Port = -1
+            };
+            return builder.Uri.AbsoluteUri;
         }
 
         private static LinkResolutionResult NoLink()

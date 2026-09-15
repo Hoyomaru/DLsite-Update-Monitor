@@ -46,6 +46,7 @@ namespace DLsiteUpdateMonitor.Core.Tests
             var result = await service.CheckAsync(record, Target(), true, CancellationToken.None);
 
             Assert.Equal(CheckHealth.RedirectedToDifferentProduct, result.Health);
+            Assert.Equal(ProductCheckFailureScope.RemoteProduct, result.FailureScope);
             Assert.Null(record.AcknowledgedSnapshot);
             Assert.Null(record.CurrentSnapshot);
             Assert.Equal(MonitoringState.Uninitialized, record.MonitoringState);
@@ -72,6 +73,7 @@ namespace DLsiteUpdateMonitor.Core.Tests
             var result = await service.CheckAsync(record, Target(), true, CancellationToken.None);
 
             Assert.Equal(CheckHealth.AccessDenied, result.Health);
+            Assert.Equal(ProductCheckFailureScope.RemoteProduct, result.FailureScope);
             Assert.Equal(MonitoringState.PendingUpdateAndFileChange, record.MonitoringState);
             Assert.Equal(acknowledged.Fingerprint, record.AcknowledgedSnapshot.Fingerprint);
             Assert.Equal(current.Fingerprint, record.CurrentSnapshot.Fingerprint);
@@ -95,6 +97,7 @@ namespace DLsiteUpdateMonitor.Core.Tests
             var result = await service.CheckAsync(record, Target(), true, CancellationToken.None);
 
             Assert.Equal(CheckHealth.ParseDegraded, result.Health);
+            Assert.Equal(ProductCheckFailureScope.RemoteProduct, result.FailureScope);
             Assert.Equal(MonitoringState.PendingUpdateAndFileChange, record.MonitoringState);
             Assert.Equal(current.Fingerprint, record.CurrentSnapshot.Fingerprint);
             Assert.NotNull(record.LastObservation);
@@ -118,7 +121,6 @@ namespace DLsiteUpdateMonitor.Core.Tests
             Assert.Equal(ComparisonOutcome.BaselineCreated, secondResult.Comparison.Outcome);
         }
 
-
         [Fact]
         public async Task Http200UnavailablePage_IsProductUnavailable_AndPreservesPendingState()
         {
@@ -138,6 +140,7 @@ namespace DLsiteUpdateMonitor.Core.Tests
             var result = await service.CheckAsync(record, Target(), true, CancellationToken.None);
 
             Assert.Equal(CheckHealth.ProductUnavailable, result.Health);
+            Assert.Equal(ProductCheckFailureScope.RemoteProduct, result.FailureScope);
             Assert.Equal(MonitoringState.PendingUpdateAndFileChange, record.MonitoringState);
             Assert.Equal(acknowledged.Fingerprint, record.AcknowledgedSnapshot.Fingerprint);
             Assert.Equal(current.Fingerprint, record.CurrentSnapshot.Fingerprint);
@@ -166,13 +169,13 @@ namespace DLsiteUpdateMonitor.Core.Tests
 
             Assert.Equal(CheckHealth.ParseDegraded, firstResult.Health);
             Assert.True(firstResult.HasReusableSnapshot);
+            Assert.Equal(ProductCheckFailureScope.None, firstResult.FailureScope);
             Assert.True(secondResult.FromCache);
             Assert.True(secondResult.HasReusableSnapshot);
             Assert.Equal(CheckHealth.Healthy, secondResult.Health);
             Assert.Equal(ComparisonOutcome.BaselineCreated, secondResult.Comparison.Outcome);
             Assert.Equal(1, handler.CallCount);
         }
-
 
         [Fact]
         public async Task ChangedRegisteredProductId_RequiresExplicitReset_WithoutHttpCall()
@@ -192,6 +195,7 @@ namespace DLsiteUpdateMonitor.Core.Tests
             var result = await service.CheckAsync(record, Target(), true, CancellationToken.None);
 
             Assert.Equal(CheckHealth.LinkError, result.Health);
+            Assert.Equal(ProductCheckFailureScope.LocalRecord, result.FailureScope);
             Assert.Contains("Reset monitoring", result.Message);
             Assert.Equal(MonitoringState.PendingUpdateInfo, record.MonitoringState);
             Assert.Equal("RJ11111111", record.RequestedProductId);

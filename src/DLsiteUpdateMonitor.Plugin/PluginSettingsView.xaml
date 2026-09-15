@@ -34,7 +34,7 @@
         </Grid>
 
         <CheckBox Content="更新状態をPlayniteタグへ反映" IsChecked="{Binding EnableTags}" Margin="0,12,0,0"/>
-        <TextBlock Text="v0.1では自動チェックを行いません。チェックはメニューから手動実行します。"
+        <TextBlock Text="現在のバージョンでは自動チェックを行いません。チェックはメニューから手動実行します。"
                    TextWrapping="Wrap" Foreground="Gray" Margin="0,12,0,0"/>
     </StackPanel>
 </UserControl>

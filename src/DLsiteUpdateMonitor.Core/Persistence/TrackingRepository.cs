@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using DLsiteUpdateMonitor.Core.Models;
@@ -34,6 +35,7 @@ namespace DLsiteUpdateMonitor.Core.Persistence
         private readonly string tempPath;
         private readonly object sync = new object();
         private bool preserveCorruptFilesOnNextSave;
+        private bool preserveCorruptPrimaryOnNextSave;
 
         public TrackingRepository(string directory)
         {
@@ -73,6 +75,10 @@ namespace DLsiteUpdateMonitor.Core.Persistence
                     try
                     {
                         db = ReadAndValidate(backupPath);
+                        if (primaryError != null)
+                        {
+                            preserveCorruptPrimaryOnNextSave = true;
+                        }
                         return new TrackingLoadResult
                         {
                             Database = db,
@@ -87,6 +93,7 @@ namespace DLsiteUpdateMonitor.Core.Persistence
                     catch (Exception backupError)
                     {
                         preserveCorruptFilesOnNextSave = true;
+                        preserveCorruptPrimaryOnNextSave = false;
                         return new TrackingLoadResult
                         {
                             Database = CreateNew(),
@@ -120,41 +127,62 @@ namespace DLsiteUpdateMonitor.Core.Persistence
                 {
                     PreserveCorruptFiles(nowUtc);
                     preserveCorruptFilesOnNextSave = false;
+                    preserveCorruptPrimaryOnNextSave = false;
                 }
+                else if (preserveCorruptPrimaryOnNextSave)
+                {
+                    PreserveCorruptPrimary(nowUtc);
+                    preserveCorruptPrimaryOnNextSave = false;
+                }
+
+                var previousLastSavedAtUtc = database.LastSavedAtUtc;
                 database.LastSavedAtUtc = nowUtc;
-                var json = JsonConvert.SerializeObject(database, Formatting.Indented);
-
-                WriteTempDurably(json);
-                ReadAndValidate(tempPath); // fail closed before touching current data
-
-                if (File.Exists(primaryPath))
+                try
                 {
-                    try
+                    var json = JsonConvert.SerializeObject(database, Formatting.Indented);
+
+                    WriteTempDurably(json);
+                    ReadAndValidate(tempPath); // fail closed before touching current data
+
+                    if (File.Exists(primaryPath))
                     {
-                        File.Replace(tempPath, primaryPath, backupPath, true);
+                        try
+                        {
+                            File.Replace(tempPath, primaryPath, backupPath, true);
+                        }
+                        catch (PlatformNotSupportedException)
+                        {
+                            FallbackReplace();
+                        }
+                        catch (IOException)
+                        {
+                            FallbackReplace();
+                        }
                     }
-                    catch (PlatformNotSupportedException)
+                    else
                     {
-                        FallbackReplace();
-                    }
-                    catch (IOException)
-                    {
-                        FallbackReplace();
+                        File.Move(tempPath, primaryPath);
                     }
                 }
-                else
+                catch
                 {
-                    File.Move(tempPath, primaryPath);
+                    database.LastSavedAtUtc = previousLastSavedAtUtc;
+                    throw;
                 }
             }
         }
-
 
         private void PreserveCorruptFiles(DateTimeOffset nowUtc)
         {
             var stamp = nowUtc.UtcDateTime.ToString("yyyyMMdd-HHmmss");
             PreserveOne(primaryPath, primaryPath + ".corrupt-" + stamp);
             PreserveOne(backupPath, backupPath + ".corrupt-" + stamp);
+        }
+
+        private void PreserveCorruptPrimary(DateTimeOffset nowUtc)
+        {
+            var stamp = nowUtc.UtcDateTime.ToString("yyyyMMdd-HHmmss");
+            PreserveOne(primaryPath, primaryPath + ".corrupt-" + stamp);
         }
 
         private static void PreserveOne(string source, string destination)
@@ -192,11 +220,24 @@ namespace DLsiteUpdateMonitor.Core.Persistence
         private static TrackingDatabase ReadAndValidate(string path)
         {
             var json = File.ReadAllText(path, Encoding.UTF8);
-            var db = JsonConvert.DeserializeObject<TrackingDatabase>(json);
+            var db = JsonConvert.DeserializeObject<TrackingDatabase>(json, new JsonSerializerSettings { MaxDepth = 64 });
             if (db == null) throw new InvalidDataException("Tracking JSON deserialized to null.");
             if (db.SchemaVersion > CurrentSchemaVersion) throw new UnsupportedTrackingSchemaException(db.SchemaVersion);
             if (db.SchemaVersion < 1) throw new InvalidDataException("Tracking schema version is invalid.");
-            if (db.Games == null) db.Games = new System.Collections.Generic.Dictionary<Guid, GameTrackingRecord>();
+            if (db.Games == null) db.Games = new Dictionary<Guid, GameTrackingRecord>();
+
+            foreach (var pair in db.Games)
+            {
+                if (pair.Value == null)
+                {
+                    throw new InvalidDataException("Tracking record is null for game " + pair.Key + ".");
+                }
+                if (pair.Value.History == null)
+                {
+                    pair.Value.History = new List<TrackingHistoryEntry>();
+                }
+            }
+
             return db;
         }
 
