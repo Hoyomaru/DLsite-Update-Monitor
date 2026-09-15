@@ -21,6 +21,29 @@ namespace DLsiteUpdateMonitor.Core.Tests
         }
 
         [Fact]
+        public void HttpDlsiteUrl_IsCanonicalizedToHttps()
+        {
+            var result = resolver.Resolve(new[]
+            {
+                "http://www.dlsite.com/maniax/work/=/product_id/RJ01234567.html"
+            });
+
+            Assert.Equal(LinkResolutionStatus.Resolved, result.Status);
+            Assert.Equal("https://www.dlsite.com/maniax/work/=/product_id/RJ01234567.html", result.Target.RegisteredUrl);
+        }
+
+        [Fact]
+        public void NonHttpSchemeOnDlsiteHost_IsInvalid()
+        {
+            var result = resolver.Resolve(new[]
+            {
+                "ftp://www.dlsite.com/maniax/work/=/product_id/RJ01234567.html"
+            });
+
+            Assert.Equal(LinkResolutionStatus.Invalid, result.Status);
+        }
+
+        [Fact]
         public void LinkDisplayNameIsIrrelevant_BecauseResolverConsumesUrlsOnly()
         {
             var result = resolver.Resolve(new[]
