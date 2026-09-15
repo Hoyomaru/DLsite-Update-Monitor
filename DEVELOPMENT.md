@@ -4,7 +4,7 @@
 
 今後の変更では、最初に [README.md](README.md)、この `DEVELOPMENT.md`、[CHANGELOG.md](CHANGELOG.md)、対象コードと関連テストを確認してください。内部構造は [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)、ビルドは [BUILD.md](BUILD.md)、Release工程は [docs/RELEASE.md](docs/RELEASE.md)、実機確認は [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md) を参照します。
 
-仕様の最終判断は**現在の実装とテスト**を基準にします。公開済みv1.0.0の履歴と、現在のUnreleased候補の実装を混同しないでください。
+仕様の最終判断は**現在の実装とテスト**を基準にします。公開済みv1.1.0の検証記録と、今後`Unreleased`として追加される変更を混同しないでください。
 
 ---
 
@@ -12,29 +12,32 @@
 
 | 項目 | 現在の状態 |
 |---|---|
-| 現在の正式Version | 1.0.0 |
-| GitHub Release | `DLsite Update Monitor v1.0.0` 公開済み |
-| Git tag | `v1.0.0` |
-| Plugin / extension Version | `1.0.0`（Unreleased候補ではまだVersion bumpしていない） |
+| 現在の正式Version | 1.1.0 |
+| GitHub Release | `DLsite Update Monitor v1.1.0` 公開済み |
+| Git tag | `v1.1.0` |
+| Plugin / extension Version | `1.1.0` |
 | Playnite実機基準 | 10.56 |
 | Plugin target | .NET Framework 4.6.2 |
 | Core target | .NET Framework 4.6.2 / .NET 8.0 |
-| 現行候補Coreテスト | 72件 PASS / 0 failed / 0 skipped（GitHub Actions） |
-| 現行候補Static validation | PASS |
-| 現行候補Windows Plugin build | PASS |
-| 現行候補payload境界検証 | PASS |
-| 現行候補Playnite Smoke Test | 未実施。Gate A〜Gをこれから実施 |
+| v1.1.0 Coreテスト | 72件 PASS / 0 failed / 0 skipped（GitHub Actions） |
+| v1.1.0 Static validation | PASS |
+| v1.1.0 Windows Plugin build | PASS |
+| v1.1.0 payload境界検証 | PASS |
+| v1.1.0 Playnite Smoke Test | Gate A〜GすべてPASS |
+| v1.1.0 最終`.pext` install | PASS |
 | Tracking Schema | 1 |
 | GitHub Actions / CI | 導入済み |
-| License | 未設定 |
+| License | MIT |
 
-公開v1.0.0の過去実機検証根拠は [RELEASE_STATUS.md](RELEASE_STATUS.md) に保存されています。現在のUnreleased候補は、v1.0.0公開後に永続化・URL信頼境界・失敗分離・診断/UIを変更しているため、過去のSmoke Test結果をそのまま流用しません。
+v1.1.0は2026-09-15に正式公開済みです。実機Smoke Test Gate A〜G、Version 1.1.0最終Artifact短縮Smoke、最終`.pext`インストール試験まで完了しています。詳細は [docs/RELEASE_NOTES_1.1.0.md](docs/RELEASE_NOTES_1.1.0.md) を参照してください。
+
+現在の`main`以降の変更は`CHANGELOG.md`の`Unreleased`として管理し、v1.1.0で取得済みの検証結果を新しい変更へ自動的に流用しません。
 
 公開Asset:
 
 ```text
-DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_0_0.pext
-SHA-256: 676dc558e4c66265bab27a2d28a01cd53e541692a1627ab8661b13d4aa0cf9e0
+DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_1_0.pext
+SHA-256: 9128b3ca11472b322d5307e6820b7fae902ca13d284b02645b87b9b3aace15de
 ```
 
 ---
@@ -93,6 +96,7 @@ DLsite-Update-Monitor/
 ├─ tests/DLsiteUpdateMonitor.Core.Tests/
 ├─ tools/
 ├─ docs/
+├─ LICENSE
 ├─ README.md
 ├─ DEVELOPMENT.md
 ├─ CHANGELOG.md
@@ -467,9 +471,10 @@ Pluginのnet462 runtimeではPlaynite本体提供のAngleSharp / Newtonsoft.Json
 - Ubuntu: Core restore/test + Static validation
 - Windows: Plugin restore/build
 - Windows: 必須payloadと禁止DLLの境界検証
+- Windows: ルート`LICENSE`の存在確認
 - Windows: 実機Smoke用`DLsiteUpdateMonitor-smoke-<commit SHA>` Artifact
 
-現行候補の自動検証は72 tests PASS、Static PASS、Windows build PASS、payload PASSです。
+v1.1.0の自動検証は72 tests PASS、Static PASS、Windows build PASS、payload PASSです。`Unreleased`変更は、その変更を含むcommitでCI結果を確認してください。
 
 ### ローカルgate
 
@@ -485,7 +490,10 @@ Pluginのnet462 runtimeではPlaynite本体提供のAngleSharp / Newtonsoft.Json
 DLsiteUpdateMonitor.dll
 DLsiteUpdateMonitor.Core.dll
 extension.yaml
+LICENSE
 ```
+
+`LICENSE`はリポジトリルートから検証済みpayloadへstageし、将来の`.pext`にも含めます。
 
 同梱しない:
 
@@ -542,6 +550,7 @@ Tag / GitHub Release
 19. **cache hitでRemoteSnapshotの`FetchedAtUtc`を書き換えない。**
 20. **DOM欠落を安易に実データ削除と解釈しない。**
 21. **孤立recordを自動削除しない。** preview + 明示確認を維持。
+22. **配布payloadからMIT `LICENSE`を落とさない。**
 
 これらを変更する場合は理由、影響、回帰テスト、必要なSmoke Test、文書更新を同じ変更へ含めてください。
 
@@ -571,7 +580,7 @@ Failure時に進めてよいもの:
 
 ## 15. テスト戦略
 
-`tests/DLsiteUpdateMonitor.Core.Tests`の現行候補は72件です。
+`tests/DLsiteUpdateMonitor.Core.Tests`のv1.1.0基準は72件です。
 
 重要回帰には次を含みます。
 
@@ -594,22 +603,23 @@ GitHub ActionsはCoreだけでなくWindows Plugin buildも行いますが、Pla
 
 ---
 
-## 16. 公開v1.0.0の履歴との区別
+## 16. 公開Releaseの履歴との区別
 
-`RELEASE_STATUS.md`に残る63件 / Gate A〜F / 33作品等は、v0.1.0正式公開前に得られた過去検証証跡です。
+`RELEASE_STATUS.md`に残る63件 / Gate A〜F / 33作品等は、v0.1.0正式公開前に得られた過去検証証跡です。v1.0.0の公開記録も歴史的情報として残します。
 
-現在のUnreleased候補は別の実装です。現時点で確認済みなのは:
+v1.1.0では次を確認済みです:
 
 ```text
 [x] Core 72/72
 [x] Static validation
 [x] Windows net462 Plugin build
 [x] payload boundary
-[ ] Playnite Smoke Gate A〜G
-[ ] candidate .pext install
+[x] Playnite Smoke Gate A〜G
+[x] Version 1.1.0最終Artifact短縮Smoke
+[x] final .pext install
 ```
 
-実機Gateが終わるまでは、公開v1.0.0と同等の検証済みReleaseとは扱いません。
+これらはv1.1.0に対する検証結果です。`Unreleased`へコード・build・packaging変更を追加した場合は、影響に応じて自動GateとSmoke Testを再実施し、新しいcandidateの結果として記録してください。
 
 ---
 
@@ -634,6 +644,7 @@ GitHub ActionsはCoreだけでなくWindows Plugin buildも行いますが、Pla
 - user data / tagの操作範囲を広げていないか
 - retry対象を安易に増やしていないか
 - destructive operationへ明示確認があるか
+- 配布物に`LICENSE`が残るか
 
 ### 実装後
 
@@ -644,6 +655,7 @@ GitHub ActionsはCoreだけでなくWindows Plugin buildも行いますが、Pla
 5. 必要なSmoke Gate
 6. README / DEVELOPMENT / CHANGELOG / ARCHITECTURE同期
 7. Version整合性
+8. `LICENSE` / License表記 / packaged payload整合性
 
 ---
 
@@ -676,6 +688,7 @@ GitHub ActionsはCoreだけでなくWindows Plugin buildも行いますが、Pla
 - `docs/RELEASE.md` — Release工程
 - `docs/SMOKE_TEST.md` — Playnite実機Gate
 - `BUILD.md` — build / CI / artifact
+- `LICENSE` — MIT License本文
 - `RELEASE_STATUS.md` — v0.1.0正式公開前の歴史的検証証跡
 - `IMPLEMENTATION_NOTES.md` — 旧リンク互換インデックス
 
@@ -689,4 +702,4 @@ GitHub ActionsはCoreだけでなくWindows Plugin buildも行いますが、Pla
 - **既存の確認済み状態を失わない**
 - **作品identityを暗黙に切り替えない**
 
-現在のUnreleased候補については、コード実装と自動検証は完了しており、次の主要gateは**同一candidate payloadによるPlaynite 10.56実機Smoke Test A〜G**です。
+現在の正式版はv1.1.0です。次の変更は`Unreleased`として扱い、v1.1.0の検証結果を新しいcandidateへ自動流用しないでください。build / packagingを変更した場合はCIのpayload境界と必要なSmoke Testを再実施し、MIT `LICENSE`が検証済みpayloadと`.pext`に含まれることも確認してください。
