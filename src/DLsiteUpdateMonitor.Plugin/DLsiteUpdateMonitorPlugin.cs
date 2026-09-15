@@ -152,6 +152,12 @@ namespace DLsiteUpdateMonitor
             };
             yield return new GameMenuItem
             {
+                Description = "監視詳細を表示",
+                MenuSection = "DLsite Update Monitor",
+                Action = a => ShowTrackingDetails(a.Games)
+            };
+            yield return new GameMenuItem
+            {
                 Description = "DLsiteページを開く",
                 MenuSection = "DLsite Update Monitor",
                 Action = a => OpenDlsitePage(a.Games)
@@ -459,6 +465,165 @@ namespace DLsiteUpdateMonitor
         private static string FormatReason(string reason)
         {
             return string.IsNullOrWhiteSpace(reason) ? string.Empty : " — " + reason;
+        }
+
+        private void ShowTrackingDetails(List<Game> games)
+        {
+            if (games == null || games.Count == 0) return;
+            if (games.Count != 1)
+            {
+                PlayniteApi.Dialogs.ShowMessage("監視詳細は1ゲームだけ選択して表示してください。", "DLsite Update Monitor");
+                return;
+            }
+
+            var game = games[0];
+            GameTrackingRecord record;
+            if (!tracking.Games.TryGetValue(game.Id, out record) || record == null)
+            {
+                PlayniteApi.Dialogs.ShowMessage("このゲームにはまだ監視データがありません。", "DLsite Update Monitor");
+                return;
+            }
+
+            var lines = new List<string>
+            {
+                game.Name,
+                "状態: " + FormatMonitoringState(record.MonitoringState),
+                "最終チェック: " + FormatCheckHealth(record.LastCheckHealth),
+                "作品ID: " + (record.RequestedProductId ?? record.ResolvedProductId ?? "未確定"),
+                "初回チェック: " + FormatTimestamp(record.FirstCheckedAtUtc),
+                "最終試行: " + FormatTimestamp(record.LastAttemptAtUtc),
+                "最終成功: " + FormatTimestamp(record.LastSuccessfulCheckAtUtc),
+                string.Empty
+            };
+
+            AddSnapshotDetails(lines, "確認済み基準", record.AcknowledgedSnapshot);
+            AddSnapshotDetails(lines, "現在の比較可能状態", record.CurrentSnapshot);
+            AddSnapshotDetails(lines, "直近の観測", record.LastObservation);
+
+            if (record.LastError != null)
+            {
+                lines.Add("最終エラー:");
+                lines.Add("  種別: " + FormatCheckHealth(record.LastError.Type));
+                lines.Add("  時刻: " + FormatTimestamp(record.LastError.OccurredAtUtc));
+                if (record.LastError.HttpStatusCode.HasValue)
+                {
+                    lines.Add("  HTTP: " + record.LastError.HttpStatusCode.Value);
+                }
+                if (!string.IsNullOrWhiteSpace(record.LastError.Message))
+                {
+                    lines.Add("  内容: " + record.LastError.Message);
+                }
+                lines.Add(string.Empty);
+            }
+
+            var history = (record.History ?? new List<TrackingHistoryEntry>())
+                .Where(entry => entry != null)
+                .OrderByDescending(entry => entry.TimestampUtc)
+                .Take(10)
+                .ToList();
+            if (history.Count > 0)
+            {
+                lines.Add("最近の履歴:");
+                foreach (var entry in history)
+                {
+                    var changes = entry.Changes == ChangeFlags.None ? string.Empty : " / " + entry.Changes;
+                    lines.Add("  " + FormatTimestamp(entry.TimestampUtc) + "  " + entry.EventType + changes);
+                }
+            }
+
+            PlayniteApi.Dialogs.ShowMessage(string.Join("\n", lines), "DLsite監視詳細");
+        }
+
+        private static void AddSnapshotDetails(List<string> lines, string label, RemoteSnapshot snapshot)
+        {
+            lines.Add(label + ":");
+            if (snapshot == null)
+            {
+                lines.Add("  なし");
+                lines.Add(string.Empty);
+                return;
+            }
+
+            lines.Add("  作品: " + (snapshot.WorkName ?? "不明"));
+            lines.Add("  ProductId: " + (snapshot.ProductId ?? "不明"));
+            lines.Add("  更新情報: " + FormatUpdateInfo(snapshot.UpdateInfo));
+            lines.Add("  ファイル容量: " + FormatFileSize(snapshot.FileSize));
+            lines.Add("  取得時刻: " + FormatTimestamp(snapshot.FetchedAtUtc));
+            lines.Add(string.Empty);
+        }
+
+        private static string FormatUpdateInfo(ObservedField<string> field)
+        {
+            if (field == null) return "不明";
+            switch (field.State)
+            {
+                case ObservationState.Missing: return "なし";
+                case ObservationState.Unparsed: return "解析不能" + FormatRaw(field.Raw);
+                case ObservationState.Parsed: return field.Normalized ?? field.Value ?? "(空)";
+                default: return field.State.ToString();
+            }
+        }
+
+        private static string FormatFileSize(ObservedField<long> field)
+        {
+            if (field == null) return "不明";
+            switch (field.State)
+            {
+                case ObservationState.Missing: return "なし";
+                case ObservationState.Unparsed: return "解析不能" + FormatRaw(field.Raw);
+                case ObservationState.Parsed: return field.Normalized ?? field.Value + " B";
+                default: return field.State.ToString();
+            }
+        }
+
+        private static string FormatRaw(string raw)
+        {
+            return string.IsNullOrWhiteSpace(raw) ? string.Empty : " (" + raw + ")";
+        }
+
+        private static string FormatMonitoringState(MonitoringState state)
+        {
+            switch (state)
+            {
+                case MonitoringState.Uninitialized: return "未初期化";
+                case MonitoringState.Clean: return "変更なし";
+                case MonitoringState.PendingUpdateInfo: return "更新情報に変更あり";
+                case MonitoringState.PendingFileChange: return "配布物に変更あり";
+                case MonitoringState.PendingUpdateAndFileChange: return "更新情報・配布物の両方に変更あり";
+                default: return state.ToString();
+            }
+        }
+
+        private static string FormatCheckHealth(CheckHealth health)
+        {
+            switch (health)
+            {
+                case CheckHealth.NeverChecked: return "未チェック";
+                case CheckHealth.Healthy: return "正常";
+                case CheckHealth.NetworkError: return "ネットワークエラー";
+                case CheckHealth.RateLimited: return "レート制限";
+                case CheckHealth.AccessDenied: return "アクセス拒否";
+                case CheckHealth.Timeout: return "タイムアウト";
+                case CheckHealth.ProductUnavailable: return "作品利用不可";
+                case CheckHealth.RedirectedToDifferentProduct: return "別作品へリダイレクト";
+                case CheckHealth.ParseError: return "解析エラー";
+                case CheckHealth.ParseDegraded: return "解析要確認";
+                case CheckHealth.LinkError: return "リンクエラー";
+                case CheckHealth.Cancelled: return "キャンセル";
+                default: return health.ToString();
+            }
+        }
+
+        private static string FormatTimestamp(DateTimeOffset? value)
+        {
+            return value.HasValue ? value.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss zzz") : "なし";
+        }
+
+        private static string FormatTimestamp(DateTimeOffset value)
+        {
+            return value == default(DateTimeOffset)
+                ? "なし"
+                : value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss zzz");
         }
 
         private void OpenDlsitePage(List<Game> games)
