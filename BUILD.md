@@ -9,6 +9,8 @@
 
 プラグインでは、Playnite本体が提供する`AngleSharp 0.9.9`と`Newtonsoft.Json 10.0.3`を利用します。拡張機能側へ競合するDLLを同梱しない構成です。
 
+本プロジェクトはMIT Licenseで公開しています。検証済みPlugin payloadと`.pext`には、ルートの`LICENSE`を同梱します。
+
 ## Windowsで必要なもの
 
 1. Visual Studio 2022 Build Tools または Visual Studio 2022
@@ -38,13 +40,15 @@ dotnet build .\src\DLsiteUpdateMonitor.Plugin\DLsiteUpdateMonitor.Plugin.csproj 
 src\DLsiteUpdateMonitor.Plugin\bin\Release\
 ```
 
-少なくとも次のファイルが必要です。
+ビルド出力として少なくとも次のファイルが必要です。
 
 ```text
 DLsiteUpdateMonitor.dll
 DLsiteUpdateMonitor.Core.dll
 extension.yaml
 ```
+
+リリース用にstageする検証済みpayloadには、上記に加えてルートの`LICENSE`を含めます。
 
 依存関係の方針を明示的に変更して再検証しない限り、`Playnite.SDK.dll`、`AngleSharp.dll`、`Newtonsoft.Json.dll`を拡張機能へ独自同梱しないでください。
 
@@ -102,6 +106,7 @@ tools\Validate-Build.cmd
 - すべてのCoreテスト
 - `net462`向けPlayniteプラグインのビルド
 - 必須成果物
+- MIT `LICENSE`の存在とpayloadへの同梱
 - `Playnite.SDK.dll`、`AngleSharp.dll`、`Newtonsoft.Json.dll`が誤って同梱されていないこと
 - `extension.yaml`の基本整合性
 
@@ -114,14 +119,16 @@ tools\Validate-Build.cmd
 - Ubuntu: .NET 8でCoreテスト + `Static-Validate.py`
 - Windows: `net462` Playniteプラグインのrestore/build
 - Windows: 必須成果物と「同梱禁止DLL」の境界検証
+- Windows: ルート`LICENSE`の存在確認
 - Windows: 実機Smoke Test用payloadのArtifact作成
 
-Smoke Test用Artifactには、CIで実際にbuild・検証した次のファイルだけをステージします。
+Smoke Test用Artifactには、CIで実際にbuild・検証した次のファイルをstageします。
 
 ```text
 DLsiteUpdateMonitor.dll
 DLsiteUpdateMonitor.Core.dll
 extension.yaml
+LICENSE
 *.pdb（存在する場合）
 ```
 
@@ -161,6 +168,6 @@ python .\tools\Static-Validate.py
 tools\Package-Release.cmd
 ```
 
-スクリプトはPlaynite公式の`Toolbox.exe pack <extensionfolder> <targetfolder>`を使用し、`artifacts\release`に`.pext`を作成します。あわせて`SHA256SUMS.txt`と`RELEASE-SUMMARY.txt`を生成します。
+スクリプトはPlaynite公式の`Toolbox.exe pack <extensionfolder> <targetfolder>`を使用し、`artifacts\release`に`.pext`を作成します。パッケージ前に`LICENSE`が検証済みpayload内に存在することも確認します。あわせて`SHA256SUMS.txt`と`RELEASE-SUMMARY.txt`を生成します。
 
 Toolboxを自動検出できない場合は、`-ToolboxPath`で`Toolbox.exe`を指定してください。
