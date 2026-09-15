@@ -27,25 +27,31 @@ namespace DLsiteUpdateMonitor
             // without treating arbitrary user-created tags that share the prefix as plugin-owned.
             RemoveOwnTags(game);
             if (!enabled) return;
-            string target = null;
+
             switch (state)
             {
                 case MonitoringState.PendingUpdateInfo:
-                case MonitoringState.PendingUpdateAndFileChange:
-                    target = UpdateTag;
+                    AddTag(game, UpdateTag);
                     break;
                 case MonitoringState.PendingFileChange:
-                    target = FileTag;
+                    AddTag(game, FileTag);
+                    break;
+                case MonitoringState.PendingUpdateAndFileChange:
+                    AddTag(game, UpdateTag);
+                    AddTag(game, FileTag);
                     break;
             }
+        }
 
-            if (target == null) return;
-            var tag = api.Database.Tags.FirstOrDefault(t => t.Name == target);
+        private void AddTag(Game game, string tagName)
+        {
+            var tag = api.Database.Tags.FirstOrDefault(t => t.Name == tagName);
             if (tag == null)
             {
-                tag = new Tag(target);
+                tag = new Tag(tagName);
                 api.Database.Tags.Add(tag);
             }
+
             if (game.TagIds == null) game.TagIds = new List<Guid>();
             if (!game.TagIds.Contains(tag.Id)) game.TagIds.Add(tag.Id);
         }

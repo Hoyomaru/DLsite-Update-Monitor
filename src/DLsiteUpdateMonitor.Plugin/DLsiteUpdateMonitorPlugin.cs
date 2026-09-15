@@ -136,6 +136,12 @@ namespace DLsiteUpdateMonitor
             };
             yield return new MainMenuItem
             {
+                Description = "孤立した追跡データを整理",
+                MenuSection = "@DLsite Update Monitor",
+                Action = _ => CleanupOrphanedTracking()
+            };
+            yield return new MainMenuItem
+            {
                 Description = "キャッシュをクリア",
                 MenuSection = "@DLsite Update Monitor",
                 Action = _ => { cache.Clear(); PlayniteApi.Dialogs.ShowMessage("キャッシュをクリアしました。", "DLsite Update Monitor"); }
@@ -375,6 +381,72 @@ namespace DLsiteUpdateMonitor
             CheckGames(games, true);
         }
 
+        private void CleanupOrphanedTracking()
+        {
+            if (!EnsurePersistenceWritable()) return;
+            if (!TryEnterMutationOperation()) return;
+
+            try
+            {
+                var liveGameIds = new HashSet<Guid>(PlayniteApi.Database.Games.Select(game => game.Id));
+                var orphanIds = tracking.Games.Keys
+                    .Where(id => !liveGameIds.Contains(id))
+                    .OrderBy(id => id)
+                    .ToList();
+
+                if (orphanIds.Count == 0)
+                {
+                    PlayniteApi.Dialogs.ShowMessage("孤立した追跡データはありません。", "DLsite Update Monitor");
+                    return;
+                }
+
+                const int previewLimit = 20;
+                var preview = orphanIds.Take(previewLimit).Select(id =>
+                {
+                    GameTrackingRecord record;
+                    tracking.Games.TryGetValue(id, out record);
+                    var productId = record?.RequestedProductId ?? record?.ResolvedProductId ?? "作品ID不明";
+                    return productId + " / GameId: " + id;
+                }).ToList();
+
+                var previewText = string.Join("\n", preview);
+                if (orphanIds.Count > previewLimit)
+                {
+                    previewText += "\n...ほか " + (orphanIds.Count - previewLimit) + " 件";
+                }
+
+                var answer = PlayniteApi.Dialogs.ShowMessage(
+                    "Playnite上に存在しない追跡データが " + orphanIds.Count + " 件あります。\n"
+                    + "tracking.jsonからのみ削除します。現在存在するゲームやタグは変更しません。\n\n"
+                    + previewText
+                    + "\n\n削除しますか？",
+                    "DLsite Update Monitor",
+                    MessageBoxButton.YesNo);
+                if (answer != MessageBoxResult.Yes) return;
+
+                var working = TrackingDatabaseCloner.Clone(tracking);
+                foreach (var id in orphanIds)
+                {
+                    working.Games.Remove(id);
+                }
+
+                repository.Save(working, DateTimeOffset.UtcNow);
+                tracking = working;
+                PlayniteApi.Dialogs.ShowMessage(orphanIds.Count + "件の孤立した追跡データを削除しました。", "DLsite Update Monitor");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "Failed to clean orphaned DLsite tracking records.");
+                PlayniteApi.Dialogs.ShowErrorMessage(
+                    "孤立した追跡データを保存できませんでした。変更は確定していません。\n\n" + ex.Message,
+                    "DLsite Update Monitor");
+            }
+            finally
+            {
+                operationLock.Release();
+            }
+        }
+
         private void ApplyTags(List<Guid> gameIds)
         {
             PlayniteApi.MainView.UIDispatcher.Invoke(() =>
@@ -399,7 +471,8 @@ namespace DLsiteUpdateMonitor
             var monitored = results.Count(r => !r.Skipped);
             var baseline = results.Count(r => r.ComparisonOutcome == ComparisonOutcome.BaselineCreated);
             var update = results.Count(r => r.State == MonitoringState.PendingUpdateInfo || r.State == MonitoringState.PendingUpdateAndFileChange);
-            var file = results.Count(r => r.State == MonitoringState.PendingFileChange);
+            var file = results.Count(r => r.State == MonitoringState.PendingFileChange || r.State == MonitoringState.PendingUpdateAndFileChange);
+            var both = results.Count(r => r.State == MonitoringState.PendingUpdateAndFileChange);
             var errors = results.Count(r => r.Health != CheckHealth.Healthy && !r.Skipped);
             var skipped = results.Count(r => r.Skipped);
 
@@ -408,6 +481,7 @@ namespace DLsiteUpdateMonitor
                 + $"監視開始: {baseline} 件\n"
                 + $"更新あり: {update} 件\n"
                 + $"配布物変更: {file} 件\n"
+                + $"両方変更: {both} 件\n"
                 + $"エラー/要確認: {errors} 件\n"
                 + $"DLsiteリンクなし: {skipped} 件";
             PlayniteApi.Dialogs.ShowMessage(text, "DLsite Update Monitor");
