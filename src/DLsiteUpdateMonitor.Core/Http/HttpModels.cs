@@ -11,6 +11,7 @@ namespace DLsiteUpdateMonitor.Core.Http
         AccessDenied = 22,
         Timeout = 23,
         UntrustedRedirect = 24,
+        ClientError = 25,
         ProductUnavailable = 30,
         ServerError = 31,
         Cancelled = 40
