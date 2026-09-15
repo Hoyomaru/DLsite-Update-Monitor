@@ -8,7 +8,66 @@
 
 ## [Unreleased]
 
-現在、次Versionとして確定した機能変更はありません。
+現行開発候補はGitHub ActionsのCore / Windows Plugin検証までPASSしています。Playnite実機Smoke Test Gate A〜Gと次Version番号はまだ確定していません。
+
+### Added
+
+- GitHub ActionsによるCoreテスト、静的検証、Windows `net462` Plugin build、payload境界検証
+- CIでbuildした実機Smoke Test用payload Artifact
+- `エラー/要確認のゲームを再確認`メニュー
+- 問題ゲーム名・理由・候補ProductIdを表示する詳細リンク診断
+- 1ゲームのBaseline / Current / LastObservation / Health / Error / Historyを表示する`監視詳細を表示`
+- Playniteから削除済みゲームの孤立tracking recordをPreview・確認後に整理する機能
+- TrackingDatabaseのdeep clone helperと回帰テスト
+
+### Changed
+
+- tracking状態変更を作業用cloneへ適用し、保存成功後だけlive状態へ昇格する方式へ変更
+- バッチ途中保存成功時点をdurable checkpointとして扱い、後続保存失敗時に未保存変更を確定しないよう変更
+- primary破損 / backup正常から復旧した後の保存で、正常backupを破損primaryに置き換えないよう変更
+- DLsiteの`http://` URLをHTTPSへ正規化
+- HTTP responseの最終URLがHTTPSかつDLsite hostであることを要求
+- parserの作品ID判定で、resolved URLがある場合にsource URLのProductIdへ暗黙fallbackしないよう変更
+- 同一ProductIdバッチ共有をRemote Product failureだけに限定し、Game固有のLocalRecord failureを共有しないよう変更
+- バッチ重複管理から取得HTML全文を外し、軽量な再利用メタデータだけを保持
+- 予期しないHTTP 4xxを非retry client errorとして扱うよう変更
+- 保存済みPlugin設定の範囲外数値を起動時に安全な既定値へ補正
+- `PendingUpdateAndFileChange`では`[DLsite更新] 更新あり`と`[DLsite更新] 配布物変更`の両方を付与
+- summaryで両方変更を更新情報・配布物の双方へ計上し、`両方変更`件数も表示
+- Plugin所有タグの判定をprefix全体ではなく2つの正確な既知タグ名へ限定
+- 設定画面の`v0.1`固定文言をVersion非依存の説明へ変更
+- `Validate-Build.ps1`の固定テスト件数表示を廃止
+- repository SDK選択を`global.json`で.NET 8系へ固定
+
+### Fixed
+
+- 保存失敗と表示された`適用済み` / `無視` / reset / batch変更が、後続saveで意図せず永続化される問題
+- backupからの復旧後、次saveで正常backupが破損primaryへ置き換わる問題
+- 同一ProductIdの先頭Gameが旧ProductId不一致だった場合、後続の正常GameまでLinkError扱いされる問題
+- JSONとしては読めるがnull tracking recordを含むprimaryがbackup fallbackを回避する問題
+- 範囲外の保存済み設定値によってPlugin constructorが失敗し得る問題
+- HTTPまたは外部hostへのredirect結果を正常なDLsite観測として扱い得るURL信頼境界
+- `[DLsite更新] `prefixを使ったユーザー独自タグをPluginが削除し得る問題
+- Combined stateが`配布物変更`のsummary/tagから見えなくなるUI上の不整合
+
+### Security
+
+- tracking JSON deserializeに`MaxDepth`を設定
+- 非HTTPS / 非DLsiteの最終取得先を拒否
+- DLsite登録URLをHTTPSへ正規化
+- 保存失敗時に未保存のlive stateを残さないcopy-on-write方式へ変更
+- Plugin所有タグを正確な2名称へ限定
+
+### Validation
+
+現行開発候補の自動検証:
+
+- Coreテスト: **72 passed / 0 failed / 0 skipped**
+- Static validation: **PASS**
+- Windows `net462` Plugin restore/build: **PASS**
+- 必須payload / 禁止DLL境界検証: **PASS**
+
+Playnite 10.56実機Smoke Test Gate A〜Gは、このUnreleased候補に対してこれから実施します。
 
 ## [1.0.0] - 2026-09-14
 

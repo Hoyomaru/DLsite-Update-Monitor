@@ -74,9 +74,10 @@ Playniteを再起動し、アドオン一覧にプラグインが表示され、
 3. プラグインのユーザーデータフォルダに`tracking.json`が作成されることを確認します。
 4. 初回取得が「監視開始」のベースラインとして扱われ、更新タグが付かないことを確認します。
 5. 同じゲームをもう一度確認し、「変更なし」になることを確認します。
-6. エラー時に既存ベースラインや保留状態が消えないことを確認します。
-7. ここまで成功したら5〜10作品で小規模チェックを行います。
-8. 小規模チェックが成功してから全ライブラリを確認します。
+6. `監視詳細を表示`でBaseline / Current / LastObservationとHealthを確認します。
+7. エラー時に既存ベースラインや保留状態が消えないことを確認します。
+8. ここまで成功したら5〜10作品で小規模チェックを行います。
+9. 小規模チェックが成功してから全ライブラリを確認します。
 
 詳細は [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md) を参照してください。
 
@@ -98,13 +99,33 @@ tools\Validate-Build.cmd
 
 - 必要なSDK・Targeting Pack
 - NuGetパッケージの復元
-- **63件のCoreテスト**
+- すべてのCoreテスト
 - `net462`向けPlayniteプラグインのビルド
 - 必須成果物
 - `Playnite.SDK.dll`、`AngleSharp.dll`、`Newtonsoft.Json.dll`が誤って同梱されていないこと
 - `extension.yaml`の基本整合性
 
 成功した成果物は`artifacts\plugin`へ出力されます。
+
+## GitHub Actions CI
+
+`.github/workflows/core-ci.yml`では、push / pull request時の自動検証を行います。
+
+- Ubuntu: .NET 8でCoreテスト + `Static-Validate.py`
+- Windows: `net462` Playniteプラグインのrestore/build
+- Windows: 必須成果物と「同梱禁止DLL」の境界検証
+- Windows: 実機Smoke Test用payloadのArtifact作成
+
+Smoke Test用Artifactには、CIで実際にbuild・検証した次のファイルだけをステージします。
+
+```text
+DLsiteUpdateMonitor.dll
+DLsiteUpdateMonitor.Core.dll
+extension.yaml
+*.pdb（存在する場合）
+```
+
+Artifact名は`DLsiteUpdateMonitor-smoke-<commit SHA>`です。実機検証では、可能な限りこのArtifactと同じcommitを使い、Smoke Test後に別バイナリへ再ビルドしないでください。
 
 ## 任意の静的事前検証
 
