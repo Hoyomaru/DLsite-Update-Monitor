@@ -25,6 +25,24 @@ namespace DLsiteUpdateMonitor.Core.Tests
         }
 
         [Fact]
+        public void ResolvedUrlWithoutProductId_IsDegradedInsteadOfFallingBackToRequestedId()
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "Fixtures", "healthy.html");
+            var html = File.ReadAllText(path);
+
+            var result = parser.Parse(
+                html,
+                "https://www.dlsite.com/maniax/work/=/product_id/RJ01234567.html",
+                "https://www.dlsite.com/maniax/",
+                "RJ01234567",
+                DateTimeOffset.Parse("2026-09-14T10:00:00Z"));
+
+            Assert.Equal(ParseHealth.Degraded, result.Health);
+            Assert.Null(result.Snapshot.ProductId);
+            Assert.Contains(result.Diagnostics, x => x.Contains("Product ID is missing"));
+        }
+
+        [Fact]
         public void MissingUpdateRow_IsHealthyMissing_NotParseFailure()
         {
             var result = ParseFixture("no-update-info.html");
@@ -60,7 +78,6 @@ namespace DLsiteUpdateMonitor.Core.Tests
             Assert.Equal(ParseHealth.Error, result.Health);
             Assert.Null(result.Snapshot);
         }
-
 
         [Fact]
         public void ProductUnavailableErrorBox_IsClassifiedWithoutSnapshot()
