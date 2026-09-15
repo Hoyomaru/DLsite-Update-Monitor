@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using DLsiteUpdateMonitor.Core.Http;
@@ -61,6 +60,7 @@ namespace DLsiteUpdateMonitor.Core.Services
                 return new ProductCheckResult
                 {
                     ProductId = target.ProductId,
+                    FailureScope = ProductCheckFailureScope.LocalRecord,
                     Health = CheckHealth.LinkError,
                     Message = message
                 };
@@ -104,6 +104,7 @@ namespace DLsiteUpdateMonitor.Core.Services
                 return new ProductCheckResult
                 {
                     ProductId = target.ProductId,
+                    FailureScope = ProductCheckFailureScope.RemoteProduct,
                     Health = health,
                     Fetch = fetch,
                     Message = fetch.ErrorMessage
@@ -126,6 +127,7 @@ namespace DLsiteUpdateMonitor.Core.Services
                 return new ProductCheckResult
                 {
                     ProductId = target.ProductId,
+                    FailureScope = ProductCheckFailureScope.RemoteProduct,
                     Health = CheckHealth.ProductUnavailable,
                     Fetch = fetch,
                     Parse = parse,
@@ -147,6 +149,7 @@ namespace DLsiteUpdateMonitor.Core.Services
                 return new ProductCheckResult
                 {
                     ProductId = target.ProductId,
+                    FailureScope = ProductCheckFailureScope.RemoteProduct,
                     Health = CheckHealth.ParseError,
                     Fetch = fetch,
                     Parse = parse,
@@ -177,6 +180,9 @@ namespace DLsiteUpdateMonitor.Core.Services
                 ProductId = target.ProductId,
                 FromCache = false,
                 HasReusableSnapshot = parse.Health == ParseHealth.Healthy,
+                FailureScope = parse.Health == ParseHealth.Healthy
+                    ? ProductCheckFailureScope.None
+                    : ProductCheckFailureScope.RemoteProduct,
                 Health = record.LastCheckHealth,
                 Comparison = result,
                 Fetch = fetch,
@@ -208,6 +214,7 @@ namespace DLsiteUpdateMonitor.Core.Services
             {
                 ProductId = target.ProductId,
                 FromCache = fromCache,
+                FailureScope = ProductCheckFailureScope.RemoteProduct,
                 Health = CheckHealth.RedirectedToDifferentProduct,
                 Fetch = fetch,
                 Parse = parse,
