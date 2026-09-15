@@ -162,6 +162,11 @@ namespace DLsiteUpdateMonitor.Core.Http
                             return Error(DlsiteFetchStatus.ProductUnavailable, status, url, resolvedUrl, attempt, "DLsite product is unavailable.");
                         }
 
+                        if ((int)status >= 400 && (int)status <= 499)
+                        {
+                            return Error(DlsiteFetchStatus.ClientError, status, url, resolvedUrl, attempt, "DLsite client error: HTTP " + (int)status + ".");
+                        }
+
                         if ((int)status >= 500 && (int)status <= 599)
                         {
                             return Error(DlsiteFetchStatus.ServerError, status, url, resolvedUrl, attempt, "DLsite server error: HTTP " + (int)status + ".");
