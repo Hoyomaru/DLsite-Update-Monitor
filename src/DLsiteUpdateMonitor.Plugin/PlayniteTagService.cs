@@ -24,7 +24,7 @@ namespace DLsiteUpdateMonitor
             if (game == null) return;
 
             // Always remove our previous state first. This makes disabling tag integration reversible
-            // instead of leaving stale [DLsite更新] tags behind.
+            // without treating arbitrary user-created tags that share the prefix as plugin-owned.
             RemoveOwnTags(game);
             if (!enabled) return;
             string target = null;
@@ -56,7 +56,9 @@ namespace DLsiteUpdateMonitor
             var ownIds = game.TagIds.Where(id =>
             {
                 var tag = api.Database.Tags.Get(id);
-                return tag != null && tag.Name.StartsWith(Prefix, StringComparison.Ordinal);
+                return tag != null
+                    && (string.Equals(tag.Name, UpdateTag, StringComparison.Ordinal)
+                        || string.Equals(tag.Name, FileTag, StringComparison.Ordinal));
             }).ToList();
 
             foreach (var id in ownIds) game.TagIds.Remove(id);
