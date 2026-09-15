@@ -8,7 +8,11 @@
 
 ## [Unreleased]
 
-現行開発候補はGitHub ActionsのCore / Windows Plugin検証までPASSしています。Playnite実機Smoke Test Gate A〜Gと次Version番号はまだ確定していません。
+次回Release向けの変更はここへ記録します。
+
+## [1.1.0] - 2026-09-15
+
+v1.1.0は、永続化・URL信頼境界・失敗分離の安全性強化と、診断・再確認・監視詳細・孤立データ整理を中心とした安定化Releaseです。
 
 ### Added
 
@@ -60,14 +64,16 @@
 
 ### Validation
 
-現行開発候補の自動検証:
+v1.1.0の実装候補に対する自動検証:
 
 - Coreテスト: **72 passed / 0 failed / 0 skipped**
 - Static validation: **PASS**
 - Windows `net462` Plugin restore/build: **PASS**
 - 必須payload / 禁止DLL境界検証: **PASS**
 
-Playnite 10.56実機Smoke Test Gate A〜Gは、このUnreleased候補に対してこれから実施します。
+Playnite 10.56実機Smoke Test Gate A〜G: **すべてPASS**
+
+実機Smoke Testで使用した実装候補commitは`a7596bc077b8506512e526ded3e80a108fbdb94f`、Artifact ZIP SHA-256は`3c800fe84a2d28175f7d2baa1e3cbcc5f3b1f433b3c0b7a8cc10475678aa2f94`です。`release/1.1.0`では、この検証済み実装を`main`へ取り込んだ後、PluginのVersion metadataだけを`1.1.0`へ更新しています。正式公開前に、この最終Version metadataを含む候補でもCIと配布パッケージ検証を行います。
 
 ## [1.0.0] - 2026-09-14
 
