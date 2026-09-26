@@ -305,6 +305,13 @@ namespace DLsiteUpdateMonitor
             PlayniteApi.Dialogs.ShowMessage(message, "DLsite Update Monitor");
         }
 
+        internal string GetAutomaticCheckSummary()
+        {
+            return Settings.EnableAutomaticChecks
+                ? $"自動チェック: ON / {Settings.AutomaticCheckIntervalHours}時間ごと（追跡中のみ）"
+                : "自動チェック: OFF";
+        }
+
         private List<Game> ResolveGames(IEnumerable<Guid> gameIds)
         {
             if (gameIds == null) return new List<Game>();
@@ -518,7 +525,7 @@ namespace DLsiteUpdateMonitor
                 return;
             }
 
-            automaticCheckTimer = new DispatcherTimer(DispatcherPriority.Background, PlayniteApi.MainView.UIDispatcher)
+            automaticCheckTimer = new DispatcherTimer
             {
                 Interval = firstDelay
             };
