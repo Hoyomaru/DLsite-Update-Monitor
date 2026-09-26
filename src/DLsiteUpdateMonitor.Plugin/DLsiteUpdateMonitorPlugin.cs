@@ -262,7 +262,19 @@ namespace DLsiteUpdateMonitor
         internal void AcknowledgeFromUpdateCenter(List<Guid> gameIds, bool ignored)
         {
             var games = ResolveGames(gameIds);
-            if (games.Count > 0) Acknowledge(games, ignored);
+            if (games.Count == 0) return;
+
+            if (games.Count > 1)
+            {
+                var action = ignored ? "無視済み" : "適用済み";
+                var answer = PlayniteApi.Dialogs.ShowMessage(
+                    $"{games.Count}件を{action}にします。選択したゲームの現在状態をまとめて確定します。続行しますか？",
+                    "DLsite Update Monitor",
+                    MessageBoxButton.YesNo);
+                if (answer != MessageBoxResult.Yes) return;
+            }
+
+            Acknowledge(games, ignored);
         }
 
         internal void ShowTrackingDetailsFromUpdateCenter(Guid gameId)
