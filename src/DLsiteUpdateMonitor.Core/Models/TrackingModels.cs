@@ -26,6 +26,7 @@ namespace DLsiteUpdateMonitor.Core.Models
         public DateTimeOffset? FirstCheckedAtUtc { get; set; }
         public DateTimeOffset? LastAttemptAtUtc { get; set; }
         public DateTimeOffset? LastSuccessfulCheckAtUtc { get; set; }
+        public DateTimeOffset? RetryNotBeforeUtc { get; set; }
         public CheckError LastError { get; set; }
         public List<TrackingHistoryEntry> History { get; set; } = new List<TrackingHistoryEntry>();
     }
