@@ -4,6 +4,7 @@ using System.IO;
 using System.Text;
 using DLsiteUpdateMonitor.Core.Models;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace DLsiteUpdateMonitor.Core.Persistence
 {
@@ -220,11 +221,29 @@ namespace DLsiteUpdateMonitor.Core.Persistence
         private static TrackingDatabase ReadAndValidate(string path)
         {
             var json = File.ReadAllText(path, Encoding.UTF8);
-            var db = JsonConvert.DeserializeObject<TrackingDatabase>(json, new JsonSerializerSettings { MaxDepth = 64 });
+            JObject root;
+            using (var stringReader = new StringReader(json))
+            using (var jsonReader = new JsonTextReader(stringReader) { MaxDepth = 64 })
+            {
+                var token = JToken.Load(jsonReader);
+                root = token as JObject;
+                if (root == null) throw new InvalidDataException("Tracking JSON root must be an object.");
+            }
+
+            // Existing tracking files must carry the Games object explicitly. Treat a missing,
+            // null, or wrong-typed Games field as corruption so a healthy backup can be used
+            // instead of silently accepting an empty database and overwriting that backup later.
+            var gamesToken = root["Games"];
+            if (gamesToken == null)
+                throw new InvalidDataException("Tracking JSON is missing the required Games object.");
+            if (gamesToken.Type != JTokenType.Object)
+                throw new InvalidDataException("Tracking JSON Games must be an object.");
+
+            var serializer = JsonSerializer.Create(new JsonSerializerSettings { MaxDepth = 64 });
+            var db = root.ToObject<TrackingDatabase>(serializer);
             if (db == null) throw new InvalidDataException("Tracking JSON deserialized to null.");
             if (db.SchemaVersion > CurrentSchemaVersion) throw new UnsupportedTrackingSchemaException(db.SchemaVersion);
             if (db.SchemaVersion < 1) throw new InvalidDataException("Tracking schema version is invalid.");
-            if (db.Games == null) db.Games = new Dictionary<Guid, GameTrackingRecord>();
 
             foreach (var pair in db.Games)
             {
