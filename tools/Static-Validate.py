@@ -108,6 +108,64 @@ for name,version,src in required:
     if not re.search(rf'Include="{re.escape(name)}"\s+Version="{re.escape(version)}"',src):
         errors.append(f'Expected dependency not pinned: {name} {version}')
 
+# Public release install instructions must match the current published package block and plugin version.
+readme_path = ROOT/'README.md'
+if readme_path.exists():
+    readme = readme_path.read_text(encoding='utf-8-sig')
+    version_match = re.search(r'<Version>([^<]+)</Version>', plugin)
+    version = version_match.group(1).strip() if version_match else None
+    install_match = re.search(r'### 一般利用者向け\s*(.*?)(?=\n### |\n## )', readme, re.S)
+    package_match = re.search(
+        r'現在公開中のv[^\s]+パッケージ:\s*```text\s*([^\r\n]+)\s*SHA-256:\s*([0-9a-fA-F]{64})\s*```',
+        readme,
+        re.S)
+    if not version:
+        errors.append('Plugin Version could not be read for README release validation')
+    elif not install_match:
+        errors.append('README general-user install section missing')
+    elif not package_match:
+        errors.append('README current published package block missing or malformed')
+    else:
+        install = install_match.group(1)
+        package_name = package_match.group(1).strip()
+        package_hash = package_match.group(2).strip()
+        for needle, msg in [
+            (f'/releases/tag/v{version}', 'README install release link does not match plugin Version'),
+            (package_name, 'README install package name does not match current published package block'),
+            (package_hash, 'README install SHA-256 does not match current published package block'),
+        ]:
+            if needle not in install:
+                errors.append(msg)
+
+# Persistence/HTTP hardening contracts from the post-v1.2.0 audit.
+tracking_repo = ROOT/'src/DLsiteUpdateMonitor.Core/Persistence/TrackingRepository.cs'
+http_client = ROOT/'src/DLsiteUpdateMonitor.Core/Http/DlsiteHttpClient.cs'
+http_models = ROOT/'src/DLsiteUpdateMonitor.Core/Http/HttpModels.cs'
+if tracking_repo.exists():
+    tr = tracking_repo.read_text(encoding='utf-8-sig')
+    for needle, msg in [
+        ('root["Games"]', 'Tracking load must explicitly inspect the Games field'),
+        ('Tracking JSON is missing the required Games object.', 'Missing Games must be rejected as corrupt'),
+        ('Tracking JSON Games must be an object.', 'Null/wrong-typed Games must be rejected as corrupt'),
+    ]:
+        if needle not in tr: errors.append(msg)
+if http_client.exists() and http_models.exists():
+    hc = http_client.read_text(encoding='utf-8-sig')
+    hm = http_models.read_text(encoding='utf-8-sig')
+    for needle, msg in [
+        ('AllowAutoRedirect = false', 'HTTP handler must not auto-follow redirects before trust validation'),
+        ('if (!IsTrustedResolvedUri(nextUri))', 'Redirect Location must be validated before the follow-up request'),
+        ('result.RetryAfter.HasValue && result.RetryAfter.Value > options.MaxRetryAfterDelay', 'Long Retry-After must release the current operation'),
+        ('ReadContentWithLimitAsync', 'HTTP response body must use bounded reading'),
+    ]:
+        if needle not in hc: errors.append(msg)
+    for needle, msg in [
+        ('public TimeSpan MaxRetryAfterDelay', 'MaxRetryAfterDelay option missing'),
+        ('public int MaxRedirects', 'MaxRedirects option missing'),
+        ('public int MaxResponseBytes', 'MaxResponseBytes option missing'),
+    ]:
+        if needle not in hm: errors.append(msg)
+
 # Update Center UX contract: keep the audited selection/filter behavior explicit.
 update_center_xaml = ROOT/'src/DLsiteUpdateMonitor.Plugin/UpdateCenterView.xaml'
 update_center_code = ROOT/'src/DLsiteUpdateMonitor.Plugin/UpdateCenterView.xaml.cs'
@@ -124,6 +182,10 @@ if update_center_xaml.exists() and update_center_code.exists():
         ('Content="エラー・要確認を再チェック"', 'Update Center attention action wording mismatch'),
         ('Header="変更状態"', 'Update Center state column wording mismatch'),
         ('Header="チェック結果"', 'Update Center health column wording mismatch'),
+        ('Header="選択中の差分"', 'Update Center diff panel missing'),
+        ('x:Name="BeforeUpdateInfoText"', 'Update Center baseline update-info field missing'),
+        ('x:Name="AfterUpdateInfoText"', 'Update Center current update-info field missing'),
+        ('Content="タグを再同期"', 'Update Center tag resync action missing'),
     ]:
         if needle not in ux: errors.append(msg)
     for needle, msg in [
@@ -131,6 +193,8 @@ if update_center_xaml.exists() and update_center_code.exists():
         ('OpenPageButton.IsEnabled = single', 'Update Center DLsite open must require a single selection'),
         ('AppliedButton.IsEnabled = hasSelection', 'Update Center acknowledge action must require selection'),
         ('IgnoreButton.IsEnabled = hasSelection', 'Update Center ignore action must require selection'),
+        ('plugin.GetUpdateCenterDiff(gameId)', 'Update Center must render Core snapshot diff data'),
+        ('plugin.ResyncTagsFromUpdateCenter()', 'Update Center tag resync action must reach the plugin'),
     ]:
         if needle not in uc: errors.append(msg)
 
@@ -190,6 +254,8 @@ if plugin_cs_path.exists():
         ('HasSettings = true', 'Plugin must advertise settings to Playnite'),
         ('Description = "設定を開く"', 'Plugin must expose a direct settings menu entry'),
         ('Action = _ => OpenSettingsView()', 'Direct settings menu must open the Playnite plugin settings view'),
+        ('Description = "タグを再同期"', 'Plugin must expose a tag resync repair action'),
+        ('private bool TryApplyTags', 'Tag sync failures must be isolated from durable tracking saves'),
     ]:
         if needle not in pc_settings: errors.append(msg)
 
