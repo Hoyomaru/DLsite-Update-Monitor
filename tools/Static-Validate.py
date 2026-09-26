@@ -133,6 +133,11 @@ if update_center_xaml.exists() and update_center_code.exists():
     ]:
         if needle not in uc: errors.append(msg)
 
+    plugin_assign = uc.find('this.plugin = plugin ?? throw new ArgumentNullException(nameof(plugin));')
+    init_component = uc.find('InitializeComponent();')
+    if plugin_assign < 0 or init_component < 0 or plugin_assign > init_component:
+        errors.append('Update Center must assign plugin dependency before InitializeComponent can raise XAML events')
+
 # net462 Core uses HttpClient directly, so the framework reference must be explicit.
 if not re.search(r'<Reference\s+Include="System\.Net\.Http"\s*/>', core):
     errors.append('net462 Core is missing explicit System.Net.Http framework reference')
