@@ -37,7 +37,7 @@ Toolbox: official Playnite 10.56
 Runtime install gate: PASS
 ```
 
-2026-09-27にこのexact packageの実機install確認を完了しました。`runtime_install_gate` は `PASS`。publish workflowはこのArtifactを再buildせず、そのままGitHub Releaseへ昇格します。
+2026-09-27にこのexact packageの実機install確認を完了しました。`runtime_install_gate` は `PASS`。publish workflowはこのArtifactを再buildせず、そのままGitHub Releaseへ昇格し、公開Asset digestも一致確認済みです。
 
 過去v0.1.0検証証跡: [../RELEASE_STATUS.md](../RELEASE_STATUS.md)
 
