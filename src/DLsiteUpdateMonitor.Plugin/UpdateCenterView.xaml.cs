@@ -87,6 +87,37 @@ namespace DLsiteUpdateMonitor
             var single = count == 1;
             if (DetailsButton != null) DetailsButton.IsEnabled = single;
             if (OpenPageButton != null) OpenPageButton.IsEnabled = single;
+
+            var selected = single ? ItemsGrid.SelectedItem as UpdateCenterItem : null;
+            if (selected != null)
+            {
+                RefreshDiff(selected.GameId);
+            }
+            else
+            {
+                ClearDiff();
+            }
+        }
+
+        private void RefreshDiff(Guid gameId)
+        {
+            if (DiffSummaryText == null) return;
+            var diff = plugin.GetUpdateCenterDiff(gameId);
+            DiffSummaryText.Text = diff.Summary;
+            BeforeUpdateInfoText.Text = diff.BeforeUpdateInfo ?? "不明";
+            AfterUpdateInfoText.Text = diff.AfterUpdateInfo ?? "不明";
+            BeforeFileSizeText.Text = diff.BeforeFileSize ?? "不明";
+            AfterFileSizeText.Text = diff.AfterFileSize ?? "不明";
+        }
+
+        private void ClearDiff()
+        {
+            if (DiffSummaryText == null) return;
+            DiffSummaryText.Text = "1ゲーム選択すると、確認済み基準と現在値の差分を表示します。";
+            BeforeUpdateInfoText.Text = "—";
+            AfterUpdateInfoText.Text = "—";
+            BeforeFileSizeText.Text = "—";
+            AfterFileSizeText.Text = "—";
         }
 
         private List<Guid> SelectedGameIds()
@@ -145,6 +176,12 @@ namespace DLsiteUpdateMonitor
 
         private void IgnoreButton_Click(object sender, RoutedEventArgs e)
             => WithSelection(ids => plugin.AcknowledgeFromUpdateCenter(ids, true));
+
+        private void ResyncTagsButton_Click(object sender, RoutedEventArgs e)
+        {
+            plugin.ResyncTagsFromUpdateCenter();
+            RefreshRows();
+        }
 
         private void DetailsButton_Click(object sender, RoutedEventArgs e)
             => WithSelection(ids => plugin.ShowTrackingDetailsFromUpdateCenter(ids[0]), true);
