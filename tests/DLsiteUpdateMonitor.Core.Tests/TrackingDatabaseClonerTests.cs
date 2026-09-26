@@ -22,6 +22,7 @@ namespace DLsiteUpdateMonitor.Core.Tests
                 MonitoringState = MonitoringState.PendingFileChange,
                 AcknowledgedSnapshot = TestSnapshots.Make(size: 1000),
                 CurrentSnapshot = TestSnapshots.Make(size: 1200),
+                RetryNotBeforeUtc = DateTimeOffset.Parse("2026-09-14T05:00:00Z"),
                 LastError = new CheckError
                 {
                     Type = CheckHealth.Timeout,
@@ -39,11 +40,13 @@ namespace DLsiteUpdateMonitor.Core.Tests
             var clone = TrackingDatabaseCloner.Clone(original);
             clone.Games[id].MonitoringState = MonitoringState.Clean;
             clone.Games[id].CurrentSnapshot.ProductId = "RJ87654321";
+            clone.Games[id].RetryNotBeforeUtc = null;
             clone.Games[id].LastError.Message = "changed";
             clone.Games[id].History[0].Note = "changed";
 
             Assert.Equal(MonitoringState.PendingFileChange, original.Games[id].MonitoringState);
             Assert.Equal("RJ01234567", original.Games[id].CurrentSnapshot.ProductId);
+            Assert.Equal(DateTimeOffset.Parse("2026-09-14T05:00:00Z"), original.Games[id].RetryNotBeforeUtc);
             Assert.Equal("timeout", original.Games[id].LastError.Message);
             Assert.Equal("original", original.Games[id].History[0].Note);
         }
