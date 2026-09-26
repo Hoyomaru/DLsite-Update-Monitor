@@ -92,14 +92,25 @@ namespace DLsiteUpdateMonitor.Core.Services
             if (!fetch.Success)
             {
                 var health = MapFetchHealth(fetch.Status);
+                var failureNow = clock.UtcNow;
                 stateMachine.RecordCheckFailure(record, health, new CheckError
                 {
                     Type = health,
-                    OccurredAtUtc = now,
+                    OccurredAtUtc = failureNow,
                     HttpStatusCode = fetch.HttpStatusCode.HasValue ? (int?)fetch.HttpStatusCode.Value : null,
                     Message = fetch.ErrorMessage ?? fetch.Status.ToString(),
                     Url = fetch.ResolvedUrl ?? fetch.SourceUrl
-                }, now);
+                }, failureNow);
+
+                if (health == CheckHealth.RateLimited && fetch.RetryAfter.HasValue && fetch.RetryAfter.Value > TimeSpan.Zero)
+                {
+                    record.RetryNotBeforeUtc = failureNow + fetch.RetryAfter.Value;
+                    if (record.LastError != null)
+                    {
+                        record.LastError.Message = (record.LastError.Message ?? "DLsite rate limit.")
+                            + " Retry not before " + record.RetryNotBeforeUtc.Value.ToString("o") + ".";
+                    }
+                }
 
                 return new ProductCheckResult
                 {
