@@ -118,6 +118,7 @@ if update_center_xaml.exists() and update_center_code.exists():
         ('Text="ゲーム名・作品IDを検索"', 'Update Center search needs a visible label'),
         ('Text="表示:"', 'Update Center filter needs a visible label'),
         ('Content="表示を更新"', 'Update Center refresh wording must distinguish local refresh from network recheck'),
+        ('Foreground="{DynamicResource TextBrush}"', 'Update Center must inherit Playnite theme text color'),
         ('x:Name="SelectionText"', 'Update Center must show selection count'),
         ('SelectionChanged="ItemsGrid_SelectionChanged"', 'Update Center must react to selection changes'),
         ('Content="エラー・要確認を再チェック"', 'Update Center attention action wording mismatch'),
