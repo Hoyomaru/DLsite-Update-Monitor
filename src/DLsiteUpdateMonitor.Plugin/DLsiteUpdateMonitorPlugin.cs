@@ -245,9 +245,9 @@ namespace DLsiteUpdateMonitor
 
                 window.Title = "DLsite Update Monitor — Update Center";
                 window.Width = 1100;
-                window.Height = 680;
+                window.Height = 760;
                 window.MinWidth = 800;
-                window.MinHeight = 500;
+                window.MinHeight = 560;
 
                 var owner = PlayniteApi.Dialogs.GetCurrentAppWindow();
                 if (owner != null)
@@ -708,10 +708,20 @@ namespace DLsiteUpdateMonitor
                 var record = pair.Value;
                 if (record == null) continue;
 
-                // Never auto-discover new games. Auto-check only records the user has already started tracking.
-                // A record without a prior attempt can still be due (for example after an explicit reset).
-                if (record.LastAttemptAtUtc.HasValue && record.LastAttemptAtUtc.Value > dueBefore)
+                // A server-provided retry deadline takes precedence over the normal automatic interval.
+                // Before the deadline, do not hammer the endpoint; once the deadline passes, retry on the
+                // next scheduler poll even if the normal interval has not elapsed yet.
+                if (record.RetryNotBeforeUtc.HasValue)
                 {
+                    if (record.RetryNotBeforeUtc.Value > now)
+                    {
+                        continue;
+                    }
+                }
+                else if (record.LastAttemptAtUtc.HasValue && record.LastAttemptAtUtc.Value > dueBefore)
+                {
+                    // Never auto-discover new games. Auto-check only records the user has already started tracking.
+                    // A record without a prior attempt can still be due (for example after an explicit reset).
                     continue;
                 }
 
@@ -1007,6 +1017,7 @@ namespace DLsiteUpdateMonitor
                 "初回チェック: " + FormatTimestamp(record.FirstCheckedAtUtc),
                 "最終試行: " + FormatTimestamp(record.LastAttemptAtUtc),
                 "最終成功: " + FormatTimestamp(record.LastSuccessfulCheckAtUtc),
+                "再試行可能: " + FormatTimestamp(record.RetryNotBeforeUtc),
                 string.Empty
             };
 
