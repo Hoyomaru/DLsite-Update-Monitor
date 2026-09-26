@@ -158,6 +158,7 @@ if settings_cs.exists() and settings_xaml.exists() and plugin_cs.exists():
         ('automaticCheckTimer.Interval = TimeSpan.FromMinutes(15)', 'Automatic-check scheduler polling cadence missing'),
         ('record.LastAttemptAtUtc.Value > dueBefore', 'Automatic checks must select only due tracking records'),
         ('var game = PlayniteApi.Database.Games.Get(pair.Key)', 'Automatic checks must resolve only existing Playnite games'),
+        ('if (resolution.Status == LinkResolutionStatus.NoDlsiteLink) continue;', 'Automatic scheduler must skip tracked records whose DLsite link was removed'),
         ('RunCheckBatchAsync(', 'Manual/automatic checks must share the batch path'),
         ('Logger.Error(ex, "Automatic DLsite update check failed.")', 'Automatic-check failures must be logged'),
     ]:
