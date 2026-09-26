@@ -10,21 +10,48 @@
 
 次回Release向けの変更はここへ記録します。
 
+## [1.2.0] - 2026-09-27
+
+追跡状態をまとめて扱えるUpdate Centerと、既定OFFのsilent automatic checkを追加するbackward-compatible feature releaseです。Tracking Schemaは1のままです。
+
 ### Added
 
-- 既に追跡中のゲームだけを対象にした、既定OFFの定期自動チェックを追加
-- 自動チェック間隔を1～168時間で設定可能にし、既定値を24時間に設定
-- 自動チェックはPlaynite起動約2分後から判定し、その後15分ごとに期限到達レコードだけを選択
-- 自動チェック結果をMessageBoxで割り込ませず、tracking / タグ / Update Centerへ静かに反映
-- 追跡済みゲームを一覧で確認できる **Update Center** を追加
-- Update Centerへゲーム名/作品ID検索、未処理・エラー/要確認・変更なし・未初期化フィルタを追加
-- Update Centerから複数選択の適用済み/無視、選択再確認、エラー一括再確認、詳細表示、DLsiteページ表示を実行可能にした
-- プロジェクトへMIT Licenseを付与し、ルートに`LICENSE`を追加
+- 追跡済みゲームを一覧で確認できる **Update Center** を追加。
+- ゲーム名/作品ID検索、未処理・エラー/要確認・変更なし・未初期化filterを追加。
+- Update Centerから複数選択の適用済み/無視、選択再確認、error一括再確認、詳細表示、DLsite page表示を実行可能にした。
+- 既に追跡中のゲームだけを対象にした、既定OFFの定期自動チェックを追加。
+- 自動チェック間隔を1～168時間で設定可能にし、既定24時間に設定。
+- Playnite起動約2分後から判定し、その後15分ごとに期限到達recordだけを選択。
+- Plugin menuへ **設定を開く** を追加し、Playnite settingsへ直接移動可能にした。
+- PluginへMIT Licenseを付与し、検証済みpayloadへ `LICENSE` を同梱。
 
 ### Changed
 
-- 検証済みPlugin payload、CI Smoke Test Artifact、将来の`.pext`へ`LICENSE`を同梱するようbuild / packaging手順を更新
-- README / DEVELOPMENT / BUILD / Release手順のライセンス表記と、v1.1.0公開後の現在状態を同期
+- Update Centerのprimary informationを人間向けstatus / change summary / health中心に整理。
+- Update CenterとSettings UIをPlaynite themeの `TextBrush` へ追従させ、dark theme contrastを改善。
+- Settingsの自動チェックsectionを上部へ移動し、small settings paneでもscroll可能にした。
+- automatic checkはmanual operationと同じbatch pathを再利用し、手動処理中は次回pollへ延期。
+- automatic checkはGlobal Progress / completion MessageBox / error MessageBoxを出さず、tracking / tags / Update Centerへ静かに反映。
+- DLsite linkが削除されたtracked recordはscheduler対象から除外。
+
+### Fixed
+
+- Update Center constructorで `InitializeComponent()` 中にSelectionChangedが発火し、plugin field代入前にNullReferenceExceptionになる起動bugを修正。
+- Update Center window ownerが取得できない場合のfallbackとstartup exception loggingを追加。
+- GenericPluginの `HasSettings = true` 宣言不足によりPlaynite設定一覧へPlugin settingsが表示されない問題を修正。
+
+### Safety
+
+- automatic checkは未追跡gameを自動登録しない。
+- Tracking Schemaは1を維持し、既存copy-on-write / checkpoint / tag ownership / fail-closed behaviorを共有。
+- manual operationとautomatic schedulerは同じoperation lockを共有し、同時mutationを避ける。
+
+### Validation
+
+- Core tests / Static validation / Windows net462 Plugin build / payload boundary: PASS。
+- Update CenterのNullReference修正後、Playnite 10.56実機で起動・tracked rows描画・dark theme表示を確認。
+- 2026-09-27にautomatic-check settings表示、設定menu、ON/OFF、runtime behaviorのGate Hを実機確認。
+- GTM/ABDM/Linkexと同じ検証セッションでRelease対象UI/機能を実機確認。
 
 ## [1.1.0] - 2026-09-15
 

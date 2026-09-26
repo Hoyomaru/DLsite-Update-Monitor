@@ -2,7 +2,7 @@
 
 この文書は、DLsite Update Monitorの現在の内部構造、データフロー、状態遷移、主要な安全設計をまとめます。
 
-公開済みv1.0.0は初回正式公開版です。現在のUnreleased候補では、Tracking Schema `1`を維持したまま、永続化、URL信頼境界、batch failure scope、診断/UIを強化しています。利用方法は [README.md](../README.md)、開発上の不変条件は [DEVELOPMENT.md](../DEVELOPMENT.md) を参照してください。
+公開済みv1.1.0の安全設計を基礎に、v1.2.0 candidateではTracking Schema `1`を維持したままUpdate Centerとopt-in automatic schedulerを追加しています。利用方法は [README.md](../README.md)、開発上の不変条件は [DEVELOPMENT.md](../DEVELOPMENT.md) を参照してください。
 
 ## 1. 全体構成
 

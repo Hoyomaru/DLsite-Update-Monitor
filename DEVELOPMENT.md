@@ -4,7 +4,7 @@
 
 今後の変更では、最初に [README.md](README.md)、この `DEVELOPMENT.md`、[CHANGELOG.md](CHANGELOG.md)、対象コードと関連テストを確認してください。内部構造は [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)、ビルドは [BUILD.md](BUILD.md)、Release工程は [docs/RELEASE.md](docs/RELEASE.md)、実機確認は [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md) を参照します。
 
-仕様の最終判断は**現在の実装とテスト**を基準にします。公開済みv1.1.0の検証記録と、今後`Unreleased`として追加される変更を混同しないでください。
+仕様の最終判断は**現在の実装とテスト**を基準にします。公開済みv1.1.0の検証記録と、v1.2.0 candidateのUpdate Center / automatic check検証を混同しないでください。
 
 ---
 
@@ -12,10 +12,10 @@
 
 | 項目 | 現在の状態 |
 |---|---|
-| 現在の正式Version | 1.1.0 |
-| GitHub Release | `DLsite Update Monitor v1.1.0` 公開済み |
-| Git tag | `v1.1.0` |
-| Plugin / extension Version | `1.1.0` |
+| Release candidate Version | 1.2.0 |
+| GitHub Release | v1.1.0公開済み / v1.2.0 candidate |
+| 最新公開Git tag | `v1.1.0` |
+| Plugin / extension Version | `1.2.0` |
 | Playnite実機基準 | 10.56 |
 | Plugin target | .NET Framework 4.6.2 |
 | Core target | .NET Framework 4.6.2 / .NET 8.0 |
@@ -23,15 +23,15 @@
 | v1.1.0 Static validation | PASS |
 | v1.1.0 Windows Plugin build | PASS |
 | v1.1.0 payload境界検証 | PASS |
-| v1.1.0 Playnite Smoke Test | Gate A〜GすべてPASS |
-| v1.1.0 最終`.pext` install | PASS |
+| v1.2.0機能実機確認 | Update Center + automatic check Gate H PASS（2026-09-27） |
+| v1.2.0 最終`.pext` install | Release前に実施 |
 | Tracking Schema | 1 |
 | GitHub Actions / CI | 導入済み |
 | License | MIT |
 
 v1.1.0は2026-09-15に正式公開済みです。実機Smoke Test Gate A〜G、Version 1.1.0最終Artifact短縮Smoke、最終`.pext`インストール試験まで完了しています。詳細は [docs/RELEASE_NOTES_1.1.0.md](docs/RELEASE_NOTES_1.1.0.md) を参照してください。
 
-現在の`main`以降の変更は`CHANGELOG.md`の`Unreleased`として管理し、v1.1.0で取得済みの検証結果を新しい変更へ自動的に流用しません。
+v1.2.0 candidateはVersion metadataを同期済みです。最終CI Artifactとpackage install確認後にtag / GitHub Releaseへ進みます。v1.1.0の過去検証結果を新candidateへ自動的に流用しません。
 
 公開Asset:
 

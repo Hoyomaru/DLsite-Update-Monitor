@@ -20,22 +20,22 @@ DLsite作品を多数管理していると、各商品ページを手作業で�
 
 ## 現在の状態
 
-- 現在の正式Version: **1.1.0**
-- GitHub Release: **v1.1.0 公開済み**
-- Git tag: **`v1.1.0`**
-- 開発状態: **v1.1.0公開済み。次の変更はUnreleasedとして管理**
+- 現在のRelease candidate Version: **1.2.0**
+- GitHub Release: **v1.1.0 公開済み / v1.2.0 release candidate**
+- 最新公開Git tag: **`v1.1.0`**
+- 開発状態: **v1.2.0最終candidate。Version metadata同期済み、最終CI / package install確認待ち**
 - Playnite実機検証基準: **10.56**
-- v1.1.0 Core自動テスト: **72ケース PASS（GitHub Actions）**
-- v1.1.0 Windows Plugin build / payload境界検証: **PASS（GitHub Actions）**
-- v1.1.0 Playnite実機Smoke Test Gate A〜G: **すべてPASS**
-- v1.1.0 最終`.pext`インストール試験: **PASS**
+- v1.2.0 candidate Core自動テスト: **GitHub Actionsで最終確認**
+- v1.2.0 candidate Windows Plugin build / payload境界検証: **GitHub Actionsで最終確認**
+- v1.2.0機能実機確認: **Update Center + automatic check Gate H PASS（2026-09-27）**
+- v1.2.0 最終`.pext`インストール試験: **release前に実施**
 - Tracking Schema: **1**
 - GitHub Actions / CI: **導入済み**
 - License: **MIT**
 
-v1.1.0は、永続化・URL信頼境界・失敗分離の安全性強化と、診断・再確認・監視詳細・孤立データ整理を中心とした安定化Releaseです。Playnite 10.56で段階的なSmoke Test Gate A〜Gを実施し、Version 1.1.0の最終CI Artifactでも短縮Smoke Testと`.pext`インストール試験を完了しています。
+v1.2.0 candidateは、v1.1.0の安全設計を維持したままUpdate Centerと既定OFFのautomatic checkを追加します。Update Center起動・theme integration・Settings表示・automatic check Gate HはPlaynite 10.56実機で確認済みです。Version 1.2.0 metadata反映後の最終CI Artifactと`.pext` install確認をRelease gateとして残しています。
 
-公開中のv1.1.0パッケージ:
+現在公開中のv1.1.0パッケージ:
 
 ```text
 DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_1_0.pext

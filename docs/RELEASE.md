@@ -9,7 +9,7 @@
 
 ## 1. 現在の公開状況
 
-v1.1.0は2026-09-15に安定化Releaseとして公開済みです。
+v1.1.0は2026-09-15に安定化Releaseとして公開済みです。v1.2.0は2026-09-27のRelease candidateで、Update Center / automatic checkを含みます。
 
 ```text
 Version: 1.1.0
@@ -23,7 +23,7 @@ SHA-256: 9128b3ca11472b322d5307e6820b7fae902ca13d284b02645b87b9b3aace15de
 
 v1.1.0はCore / Windows CI、Playnite 10.56 Smoke Test Gate A〜G、Version 1.1.0最終Artifact短縮Smoke、最終`.pext`インストール試験まで完了しています。公開AssetのGitHub側digestも上記SHA-256と一致しています。
 
-次の変更は`Unreleased`として管理し、v1.1.0の検証結果と混同しません。
+v1.2.0 candidateはVersion metadataを同期済みです。最終CI Artifact、同payloadのpackage化、`.pext` install確認を終えてからtag/Releaseを作成します。
 
 過去v0.1.0検証証跡: [../RELEASE_STATUS.md](../RELEASE_STATUS.md)
 
@@ -147,6 +147,8 @@ Gate E: Tag ownership / Combined state / Acknowledge・Reset
 Gate F: Orphan tracking cleanup（検証用Game）
   ↓
 Gate G: 5〜10作品 / restart / tag toggle / 全ライブラリ
+  ↓
+Gate H: opt-in automatic check / startup grace / silent runtime / tracked-only
 ```
 
 Gateを飛ばして全ライブラリへ進みません。
