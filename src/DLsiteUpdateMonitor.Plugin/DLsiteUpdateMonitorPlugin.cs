@@ -234,8 +234,8 @@ namespace DLsiteUpdateMonitor
                     GameId = game.Id,
                     GameName = game.Name ?? "(名称なし)",
                     ProductId = record.RequestedProductId ?? record.ResolvedProductId ?? "未確定",
-                    StateText = FormatMonitoringState(record.MonitoringState),
-                    HealthText = FormatCheckHealth(record.LastCheckHealth),
+                    StateText = FormatUpdateCenterState(record.MonitoringState),
+                    HealthText = FormatUpdateCenterHealth(record.LastCheckHealth),
                     LastCheckedText = FormatShortTimestamp(record.LastSuccessfulCheckAtUtc),
                     ChangeSummary = FormatChangeSummary(record.MonitoringState),
                     FilterBucket = record.MonitoringState == MonitoringState.Clean
@@ -294,16 +294,6 @@ namespace DLsiteUpdateMonitor
             PlayniteApi.Dialogs.ShowMessage(message, "DLsite Update Monitor");
         }
 
-        internal bool ConfirmBulkAction(string actionLabel, int count)
-        {
-            if (count <= 1) return true;
-            var answer = PlayniteApi.Dialogs.ShowMessage(
-                count + "件を「" + actionLabel + "」として処理します。\n\n続行しますか？",
-                "DLsite Update Monitor",
-                MessageBoxButton.YesNo);
-            return answer == MessageBoxResult.Yes;
-        }
-
         private List<Game> ResolveGames(IEnumerable<Guid> gameIds)
         {
             if (gameIds == null) return new List<Game>();
@@ -312,6 +302,28 @@ namespace DLsiteUpdateMonitor
                 .Select(id => PlayniteApi.Database.Games.Get(id))
                 .Where(game => game != null)
                 .ToList();
+        }
+
+        private static string FormatUpdateCenterState(MonitoringState state)
+        {
+            switch (state)
+            {
+                case MonitoringState.PendingUpdateInfo:
+                case MonitoringState.PendingFileChange:
+                case MonitoringState.PendingUpdateAndFileChange:
+                    return "● " + FormatMonitoringState(state);
+                case MonitoringState.Clean:
+                    return "✓ " + FormatMonitoringState(state);
+                default:
+                    return "○ " + FormatMonitoringState(state);
+            }
+        }
+
+        private static string FormatUpdateCenterHealth(CheckHealth health)
+        {
+            if (health == CheckHealth.Healthy) return "✓ " + FormatCheckHealth(health);
+            if (health == CheckHealth.NeverChecked) return "○ " + FormatCheckHealth(health);
+            return "⚠ " + FormatCheckHealth(health);
         }
 
         private static string FormatChangeSummary(MonitoringState state)
