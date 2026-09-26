@@ -17,7 +17,8 @@
 ### Changed
 
 - HTTP redirectを自動追跡せず、各LocationをHTTPS + DLsite hostとして検証してから次のrequestを送る方式へ変更。
-- 長いRetry-Afterは同一チェック内で待ち続けず、後続のscheduler/manual operationへ排他を返す方式へ変更。
+- 長いRetry-Afterは同一チェック内で待ち続けず、再試行可能時刻をtrackingへ保存してschedulerへ排他を返す方式へ変更。期限後は通常の自動チェック間隔より優先して再確認する。
+- PlayniteのPlugin管理タグIDをservice内でキャッシュし、大規模ライブラリでゲームごとの全タグ検索を避けるよう変更。
 - 起動時にplugin-owned tagをtracking状態と照合し、前回tag同期だけが失敗したケースを自動修復。
 - READMEの一般利用者向けInstall案内を公開済みv1.2.0へ統一。
 
@@ -32,6 +33,8 @@
 - Games欠落/null/型不正 + 正常backupの回帰testを追加。
 - 外部/HTTP redirectをfollow前に拒否するtest、trusted redirect test、長いRetry-Afterの即時返却test、response size上限testを追加。
 - SnapshotDifferのfield diff testを追加。
+- 入れ子の更新情報、同値の複数容量表記、競合する複数容量表記のparser fixture/testを追加。
+- TrackingDatabaseClonerの対象property追加時にレビューを強制する契約testを追加。
 
 ## [1.2.0] - 2026-09-27
 
