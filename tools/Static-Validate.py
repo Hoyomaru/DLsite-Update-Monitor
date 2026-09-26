@@ -154,8 +154,13 @@ if settings_cs.exists() and settings_xaml.exists() and plugin_cs.exists():
     ]:
         if needle not in st: errors.append(msg)
     for needle, msg in [
+        ('<ScrollViewer VerticalScrollBarVisibility="Auto"', 'Automatic-check settings must remain scrollable in Playnite settings'),
+        ('Foreground="{DynamicResource TextBrush}"', 'Automatic-check settings must inherit Playnite theme text color'),
+        ('自動チェック（既定OFF）', 'Automatic-check section heading missing'),
+        ('x:Name="AutomaticCheckBox"', 'Automatic-check opt-in control missing'),
         ('追跡中のゲームを自動チェックする', 'Automatic-check opt-in UI missing'),
-        ('チェック間隔（時間）', 'Automatic-check interval UI missing'),
+        ('自動チェック間隔（時間）', 'Automatic-check interval UI missing'),
+        ('IsEnabled="{Binding IsChecked, ElementName=AutomaticCheckBox}"', 'Automatic-check interval must be disabled while automatic checks are OFF'),
         ('既に追跡中のゲームだけが対象です。', 'Tracked-only automatic-check explanation missing'),
     ]:
         if needle not in sx: errors.append(msg)
