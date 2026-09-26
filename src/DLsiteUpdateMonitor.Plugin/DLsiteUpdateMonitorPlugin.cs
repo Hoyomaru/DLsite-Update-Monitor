@@ -209,21 +209,46 @@ namespace DLsiteUpdateMonitor
 
         private void ShowUpdateCenter()
         {
-            var window = PlayniteApi.Dialogs.CreateWindow(new WindowCreationOptions
+            try
             {
-                ShowCloseButton = true,
-                ShowMaximizeButton = true,
-                ShowMinimizeButton = false
-            });
-            window.Title = "DLsite Update Monitor — Update Center";
-            window.Width = 1100;
-            window.Height = 680;
-            window.MinWidth = 800;
-            window.MinHeight = 500;
-            window.Owner = PlayniteApi.Dialogs.GetCurrentAppWindow();
-            window.WindowStartupLocation = WindowStartupLocation.CenterOwner;
-            window.Content = new UpdateCenterView(this);
-            window.ShowDialog();
+                var window = PlayniteApi.Dialogs.CreateWindow(new WindowCreationOptions
+                {
+                    ShowCloseButton = true,
+                    ShowMaximizeButton = true,
+                    ShowMinimizeButton = false
+                });
+                if (window == null)
+                {
+                    throw new InvalidOperationException("Playnite did not create the Update Center window.");
+                }
+
+                window.Title = "DLsite Update Monitor — Update Center";
+                window.Width = 1100;
+                window.Height = 680;
+                window.MinWidth = 800;
+                window.MinHeight = 500;
+
+                var owner = PlayniteApi.Dialogs.GetCurrentAppWindow();
+                if (owner != null)
+                {
+                    window.Owner = owner;
+                    window.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+                }
+                else
+                {
+                    window.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+                }
+
+                window.Content = new UpdateCenterView(this);
+                window.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "Failed to open Update Center.");
+                PlayniteApi.Dialogs.ShowErrorMessage(
+                    "Update Centerを開けませんでした。詳細はPlayniteのログに記録しました。\n\n" + ex.Message,
+                    "DLsite Update Monitor");
+            }
         }
 
         internal List<UpdateCenterItem> GetUpdateCenterItems()
