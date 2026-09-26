@@ -139,6 +139,48 @@ if update_center_xaml.exists() and update_center_code.exists():
     if plugin_assign < 0 or init_component < 0 or plugin_assign > init_component:
         errors.append('Update Center must assign plugin dependency before InitializeComponent can raise XAML events')
 
+# Automatic-check contract: opt-in, tracked-only, silent, and routed through the shared batch path.
+settings_cs = ROOT/'src/DLsiteUpdateMonitor.Plugin/PluginSettings.cs'
+settings_xaml = ROOT/'src/DLsiteUpdateMonitor.Plugin/PluginSettingsView.xaml'
+plugin_cs = ROOT/'src/DLsiteUpdateMonitor.Plugin/DLsiteUpdateMonitorPlugin.cs'
+if settings_cs.exists() and settings_xaml.exists() and plugin_cs.exists():
+    st = settings_cs.read_text(encoding='utf-8-sig')
+    sx = settings_xaml.read_text(encoding='utf-8-sig')
+    pc = plugin_cs.read_text(encoding='utf-8-sig')
+    for needle, msg in [
+        ('public bool EnableAutomaticChecks { get; set; } = false;', 'Automatic checks must default to OFF'),
+        ('public int AutomaticCheckIntervalHours', 'Automatic check interval setting missing'),
+        ('自動チェック間隔は1～168時間', 'Automatic check interval validation missing'),
+    ]:
+        if needle not in st: errors.append(msg)
+    for needle, msg in [
+        ('<ScrollViewer VerticalScrollBarVisibility="Auto"', 'Automatic-check settings must remain scrollable in Playnite settings'),
+        ('Foreground="{DynamicResource TextBrush}"', 'Automatic-check settings must inherit Playnite theme text color'),
+        ('自動チェック（既定OFF）', 'Automatic-check section heading missing'),
+        ('x:Name="AutomaticCheckBox"', 'Automatic-check opt-in control missing'),
+        ('追跡中のゲームを自動チェックする', 'Automatic-check opt-in UI missing'),
+        ('自動チェック間隔（時間）', 'Automatic-check interval UI missing'),
+        ('IsEnabled="{Binding IsChecked, ElementName=AutomaticCheckBox}"', 'Automatic-check interval must be disabled while automatic checks are OFF'),
+        ('既に追跡中のゲームだけが対象です。', 'Tracked-only automatic-check explanation missing'),
+    ]:
+        if needle not in sx: errors.append(msg)
+    for needle, msg in [
+        ('ConfigureAutomaticCheckTimer(TimeSpan.FromMinutes(2))', 'Automatic-check startup grace period missing'),
+        ('automaticCheckTimer.Interval = TimeSpan.FromMinutes(15)', 'Automatic-check scheduler polling cadence missing'),
+        ('record.LastAttemptAtUtc.Value > dueBefore', 'Automatic checks must select only due tracking records'),
+        ('var game = PlayniteApi.Database.Games.Get(pair.Key)', 'Automatic checks must resolve only existing Playnite games'),
+        ('if (resolution.Status == LinkResolutionStatus.NoDlsiteLink) continue;', 'Automatic scheduler must skip tracked records whose DLsite link was removed'),
+        ('RunCheckBatchAsync(', 'Manual/automatic checks must share the batch path'),
+        ('Logger.Error(ex, "Automatic DLsite update check failed.")', 'Automatic-check failures must be logged'),
+    ]:
+        if needle not in pc: errors.append(msg)
+    auto_start = pc.find('private async void AutomaticCheckTimer_Tick')
+    auto_end = pc.find('private List<Game> GetDueAutomaticCheckGames', auto_start)
+    if auto_start >= 0 and auto_end > auto_start:
+        auto_body = pc[auto_start:auto_end]
+        if 'ShowMessage(' in auto_body or 'ShowErrorMessage(' in auto_body:
+            errors.append('Automatic check path must not display modal dialogs')
+
 # Plugin settings discoverability contract.
 plugin_cs_path = ROOT/'src/DLsiteUpdateMonitor.Plugin/DLsiteUpdateMonitorPlugin.cs'
 if plugin_cs_path.exists():

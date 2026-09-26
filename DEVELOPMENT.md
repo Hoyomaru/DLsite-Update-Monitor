@@ -120,6 +120,7 @@ DLsite-Update-Monitor/
 - Game選択
 - Core serviceの組み立て
 - batch orchestration
+- 自動チェックscheduler（期限到達recordの選定だけを担当）
 - 永続化checkpoint
 - Playnite tag同期
 - 監視詳細表示
@@ -152,7 +153,8 @@ CoreはPlaynite SDKへ依存せず、.NET 8テストから検証できます。
 - Playnite API接続
 - runtime service構築
 - menu提供
-- batch check
+- manual / automatic双方から共有するbatch check
+- tracked-only automatic scheduler
 - tag同期
 - `適用済み` / `無視` / `監視状態をリセット`
 - tracking detail / diagnostics
@@ -177,7 +179,9 @@ tracking = working
 
 Batch checkでは10ゲームごとに保存し、**最後に正常保存できたcheckpointだけ**をlive状態へ昇格します。後続saveが失敗した場合、未保存の変更を後のshutdown save等で復活させてはいけません。
 
-`GlobalProgressResult.Error`がある場合はタグ反映を中止します。
+手動チェックと自動チェックは同じ `RunCheckBatchAsync()` を使います。scheduler側へ比較・保存・failure処理を複製してはいけません。schedulerの責務は、`LastAttemptAtUtc` と設定間隔から「今チェックすべき既追跡Game」を選ぶことだけです。
+
+手動チェックの `GlobalProgressResult.Error` ではタグ反映を中止します。自動チェックはmodal UIを出さず、例外をログへ残して次回scheduler判定へ戻します。
 
 ### `DlsiteLinkResolver`
 

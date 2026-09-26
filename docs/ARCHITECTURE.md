@@ -250,6 +250,20 @@ RemoteProduct = ProductId共通のRemote取得側
 - 10 Gameごと
 - batch終了時
 
+手動チェックと自動チェックは、同じ `RunCheckBatchAsync()` へ入ります。UI有無でstate transitionや保存経路を分岐させません。
+
+自動scheduler:
+
+1. 既に`tracking.Games`へ存在するrecordだけを見る
+2. `LastAttemptAtUtc`が設定間隔より古いrecordだけを選ぶ
+3. Playnite上にまだ存在するGameだけをbatchへ渡す
+4. `operationLock`取得に失敗した場合は実行せず、次の15分pollへ延期
+5. batchは`forceRefresh=true`で実行
+6. modal progress / summary / error dialogは表示しない
+7. tracking保存後に既存tag同期を行う
+
+既定では自動チェックはOFFです。Playnite起動時は2分のgrace periodを置き、その後は15分ごとに「期限到達recordがあるか」だけを判定します。15分pollはHTTP取得間隔ではありません。
+
 ## 10. Copy-on-write とdurable checkpoint
 
 Pluginのmutating operationは共有`tracking`を先に変更しません。

@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
 using DLsiteUpdateMonitor.Core.Http;
 using DLsiteUpdateMonitor.Core.Models;
 using DLsiteUpdateMonitor.Core.Parsing;
@@ -33,6 +34,9 @@ namespace DLsiteUpdateMonitor
         private TrackingStateMachine stateMachine;
         private UpdateCheckService checkService;
         private PlayniteTagService tagService;
+        private DispatcherTimer automaticCheckTimer;
+        private readonly CancellationTokenSource automaticCheckCancellation = new CancellationTokenSource();
+        private bool applicationStarted;
 
         public override Guid Id { get; } = Guid.Parse("334542c6-1f81-4cc5-afd5-e052b021d37e");
         public PluginSettings Settings { get; private set; }
@@ -67,16 +71,22 @@ namespace DLsiteUpdateMonitor
 
         public override void OnApplicationStarted(OnApplicationStartedEventArgs args)
         {
+            applicationStarted = true;
             if (!string.IsNullOrWhiteSpace(startupWarning))
             {
                 Logger.Warn(startupWarning);
                 PlayniteApi.Dialogs.ShowMessage(startupWarning, "DLsite Update Monitor");
                 startupWarning = null;
             }
+            ConfigureAutomaticCheckTimer(TimeSpan.FromMinutes(2));
         }
 
         public override void OnApplicationStopped(OnApplicationStoppedEventArgs args)
         {
+            applicationStarted = false;
+            automaticCheckTimer?.Stop();
+            automaticCheckCancellation.Cancel();
+
             // Never serialize the tracking dictionary concurrently with an active check/mutation.
             // Periodic saves during checks mean skipping this final save is safer than racing it.
             if (!operationLock.Wait(0))
@@ -105,12 +115,15 @@ namespace DLsiteUpdateMonitor
         {
             if (operationLock.CurrentCount == 0)
             {
-                // A running check keeps the old immutable runtime options until it finishes.
+                // A running check keeps the old immutable HTTP/runtime options until it finishes,
+                // but scheduler enable/disable should still take effect immediately.
+                ConfigureAutomaticCheckTimer(TimeSpan.FromSeconds(10));
                 return;
             }
             BuildRuntimeServices();
             // Reconcile existing plugin-owned tags immediately when the user toggles tag integration.
             ApplyTags(tracking.Games.Keys.ToList());
+            ConfigureAutomaticCheckTimer(TimeSpan.FromSeconds(10));
         }
 
         public override IEnumerable<MainMenuItem> GetMainMenuItems(GetMainMenuItemsArgs args)
@@ -330,6 +343,13 @@ namespace DLsiteUpdateMonitor
             PlayniteApi.Dialogs.ShowMessage(message, "DLsite Update Monitor");
         }
 
+        internal string GetAutomaticCheckSummary()
+        {
+            return Settings.EnableAutomaticChecks
+                ? $"自動チェック: ON / {Settings.AutomaticCheckIntervalHours}時間ごと（追跡中のみ）"
+                : "自動チェック: OFF";
+        }
+
         private List<Game> ResolveGames(IEnumerable<Guid> gameIds)
         {
             if (gameIds == null) return new List<Game>();
@@ -406,100 +426,22 @@ namespace DLsiteUpdateMonitor
                 return;
             }
 
-            var results = new List<GameRunResult>();
-            var working = TrackingDatabaseCloner.Clone(tracking);
             try
             {
+                var results = new List<GameRunResult>();
                 var progressResult = PlayniteApi.Dialogs.ActivateGlobalProgress(progress =>
                 {
                     progress.ProgressMaxValue = games.Count;
                     progress.CurrentProgressValue = 0;
-                    Task.Run(async () =>
-                    {
-                        // Keep only product-level reuse metadata here. Full HTTP/HTML payloads belong to
-                        // per-game results and the SnapshotCache, and should not remain rooted for the batch.
-                        var productResults = new Dictionary<string, BatchProductResult>(StringComparer.OrdinalIgnoreCase);
-                        var processed = 0;
-                        foreach (var game in games)
+                    results = Task.Run(() => RunCheckBatchAsync(
+                        games,
+                        forceRefresh,
+                        progress.CancelToken,
+                        (processed, total, game) =>
                         {
-                            if (progress.CancelToken.IsCancellationRequested) break;
-                            processed++;
                             progress.CurrentProgressValue = processed;
-                            progress.Text = $"確認中... ({processed}/{games.Count}) {game.Name}";
-
-                            var resolution = linkResolver.Resolve(game.Links?.Select(l => l.Url));
-                            if (resolution.Status == LinkResolutionStatus.NoDlsiteLink)
-                            {
-                                results.Add(GameRunResult.CreateSkipped(game));
-                                continue;
-                            }
-
-                            var record = GetOrCreateRecord(working, game.Id);
-                            if (resolution.Status != LinkResolutionStatus.Resolved)
-                            {
-                                var message = resolution.Reason ?? "DLsiteリンクを一意に解決できません。";
-                                stateMachine.RecordCheckFailure(record, CheckHealth.LinkError, new CheckError
-                                {
-                                    Type = CheckHealth.LinkError,
-                                    OccurredAtUtc = DateTimeOffset.UtcNow,
-                                    Message = message
-                                }, DateTimeOffset.UtcNow);
-                                results.Add(GameRunResult.Failed(game, record, CheckHealth.LinkError));
-                                continue;
-                            }
-
-                            var target = resolution.Target;
-                            ProductCheckResult checkedResult;
-                            BatchProductResult priorProductResult;
-                            if (productResults.TryGetValue(target.ProductId, out priorProductResult))
-                            {
-                                if (priorProductResult.HasReusableSnapshot)
-                                {
-                                    // Reuse only the validated remote observation. Each game's local
-                                    // comparison state still runs independently against that observation.
-                                    checkedResult = await checkService.CheckAsync(record, target, false, progress.CancelToken).ConfigureAwait(false);
-                                }
-                                else
-                                {
-                                    // Only remote/product failures are stored in productResults. A local
-                                    // record failure such as a changed registered product ID is never shared.
-                                    stateMachine.RecordCheckFailure(record, priorProductResult.Health, new CheckError
-                                    {
-                                        Type = priorProductResult.Health,
-                                        OccurredAtUtc = DateTimeOffset.UtcNow,
-                                        Message = priorProductResult.Message,
-                                        Url = target.RegisteredUrl
-                                    }, DateTimeOffset.UtcNow);
-                                    checkedResult = new ProductCheckResult
-                                    {
-                                        ProductId = target.ProductId,
-                                        FailureScope = ProductCheckFailureScope.RemoteProduct,
-                                        Health = priorProductResult.Health,
-                                        Message = priorProductResult.Message
-                                    };
-                                }
-                            }
-                            else
-                            {
-                                checkedResult = await CheckOneAsync(game, record, target, forceRefresh, progress.CancelToken).ConfigureAwait(false);
-                                var batchResult = BatchProductResult.From(checkedResult);
-                                if (batchResult != null)
-                                {
-                                    productResults[target.ProductId] = batchResult;
-                                }
-                            }
-
-                            results.Add(GameRunResult.From(game, record, checkedResult));
-                            if (processed % 10 == 0)
-                            {
-                                repository.Save(working, DateTimeOffset.UtcNow);
-                                tracking = TrackingDatabaseCloner.Clone(working);
-                            }
-                        }
-
-                        repository.Save(working, DateTimeOffset.UtcNow);
-                        tracking = working;
-                    }).GetAwaiter().GetResult();
+                            progress.Text = $"確認中... ({processed}/{total}) {game.Name}";
+                        })).GetAwaiter().GetResult();
                 }, new GlobalProgressOptions("DLsite更新情報を確認中...", true) { IsIndeterminate = false });
 
                 if (progressResult.Error != null)
@@ -519,6 +461,201 @@ namespace DLsiteUpdateMonitor
             {
                 operationLock.Release();
             }
+        }
+
+        private async Task<List<GameRunResult>> RunCheckBatchAsync(
+            List<Game> games,
+            bool forceRefresh,
+            CancellationToken cancellationToken,
+            Action<int, int, Game> onProgress)
+        {
+            var results = new List<GameRunResult>();
+            var working = TrackingDatabaseCloner.Clone(tracking);
+            // Keep only product-level reuse metadata here. Full HTTP/HTML payloads belong to
+            // per-game results and the SnapshotCache, and should not remain rooted for the batch.
+            var productResults = new Dictionary<string, BatchProductResult>(StringComparer.OrdinalIgnoreCase);
+            var processed = 0;
+
+            foreach (var game in games)
+            {
+                if (cancellationToken.IsCancellationRequested) break;
+                processed++;
+                onProgress?.Invoke(processed, games.Count, game);
+
+                var resolution = linkResolver.Resolve(game.Links?.Select(l => l.Url));
+                if (resolution.Status == LinkResolutionStatus.NoDlsiteLink)
+                {
+                    results.Add(GameRunResult.CreateSkipped(game));
+                    continue;
+                }
+
+                var record = GetOrCreateRecord(working, game.Id);
+                if (resolution.Status != LinkResolutionStatus.Resolved)
+                {
+                    var message = resolution.Reason ?? "DLsiteリンクを一意に解決できません。";
+                    stateMachine.RecordCheckFailure(record, CheckHealth.LinkError, new CheckError
+                    {
+                        Type = CheckHealth.LinkError,
+                        OccurredAtUtc = DateTimeOffset.UtcNow,
+                        Message = message
+                    }, DateTimeOffset.UtcNow);
+                    results.Add(GameRunResult.Failed(game, record, CheckHealth.LinkError));
+                    continue;
+                }
+
+                var target = resolution.Target;
+                ProductCheckResult checkedResult;
+                BatchProductResult priorProductResult;
+                if (productResults.TryGetValue(target.ProductId, out priorProductResult))
+                {
+                    if (priorProductResult.HasReusableSnapshot)
+                    {
+                        checkedResult = await checkService.CheckAsync(record, target, false, cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        stateMachine.RecordCheckFailure(record, priorProductResult.Health, new CheckError
+                        {
+                            Type = priorProductResult.Health,
+                            OccurredAtUtc = DateTimeOffset.UtcNow,
+                            Message = priorProductResult.Message,
+                            Url = target.RegisteredUrl
+                        }, DateTimeOffset.UtcNow);
+                        checkedResult = new ProductCheckResult
+                        {
+                            ProductId = target.ProductId,
+                            FailureScope = ProductCheckFailureScope.RemoteProduct,
+                            Health = priorProductResult.Health,
+                            Message = priorProductResult.Message
+                        };
+                    }
+                }
+                else
+                {
+                    checkedResult = await CheckOneAsync(game, record, target, forceRefresh, cancellationToken).ConfigureAwait(false);
+                    var batchResult = BatchProductResult.From(checkedResult);
+                    if (batchResult != null)
+                    {
+                        productResults[target.ProductId] = batchResult;
+                    }
+                }
+
+                results.Add(GameRunResult.From(game, record, checkedResult));
+                if (processed % 10 == 0)
+                {
+                    repository.Save(working, DateTimeOffset.UtcNow);
+                    tracking = TrackingDatabaseCloner.Clone(working);
+                }
+            }
+
+            repository.Save(working, DateTimeOffset.UtcNow);
+            tracking = working;
+            return results;
+        }
+
+        private void ConfigureAutomaticCheckTimer(TimeSpan firstDelay)
+        {
+            automaticCheckTimer?.Stop();
+            automaticCheckTimer = null;
+
+            if (!applicationStarted || persistenceBlocked || !Settings.EnableAutomaticChecks)
+            {
+                return;
+            }
+
+            automaticCheckTimer = new DispatcherTimer
+            {
+                Interval = firstDelay
+            };
+            automaticCheckTimer.Tick += AutomaticCheckTimer_Tick;
+            automaticCheckTimer.Start();
+            Logger.Info($"Automatic DLsite checks enabled: every {Settings.AutomaticCheckIntervalHours} hour(s).");
+        }
+
+        private async void AutomaticCheckTimer_Tick(object sender, EventArgs e)
+        {
+            if (automaticCheckTimer != null)
+            {
+                // After the initial grace period, wake up occasionally and select only records that are due.
+                automaticCheckTimer.Interval = TimeSpan.FromMinutes(15);
+            }
+
+            if (!Settings.EnableAutomaticChecks || persistenceBlocked || automaticCheckCancellation.IsCancellationRequested)
+            {
+                return;
+            }
+
+            if (!operationLock.Wait(0))
+            {
+                Logger.Info("Automatic DLsite check deferred because another monitor operation is active.");
+                return;
+            }
+
+            try
+            {
+                var games = GetDueAutomaticCheckGames(DateTimeOffset.UtcNow);
+                if (games.Count == 0) return;
+
+                Logger.Info($"Automatic DLsite check starting for {games.Count} tracked game(s).");
+                var results = await Task.Run(() => RunCheckBatchAsync(
+                    games,
+                    true,
+                    automaticCheckCancellation.Token,
+                    null));
+
+                ApplyTags(results.Select(r => r.GameId).Distinct().ToList());
+                var errors = results.Count(r => !r.Skipped && r.Health != CheckHealth.Healthy);
+                var changes = results.Count(r => r.State == MonitoringState.PendingUpdateInfo
+                    || r.State == MonitoringState.PendingFileChange
+                    || r.State == MonitoringState.PendingUpdateAndFileChange);
+                Logger.Info($"Automatic DLsite check completed: {results.Count} result(s), {changes} pending change(s), {errors} attention/error result(s).");
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.Info("Automatic DLsite check canceled during application shutdown.");
+            }
+            catch (Exception ex)
+            {
+                // Automatic work must never steal focus with an error dialog. Durable checkpoints from
+                // RunCheckBatchAsync remain authoritative, and Update Center exposes attention states.
+                Logger.Error(ex, "Automatic DLsite update check failed.");
+            }
+            finally
+            {
+                operationLock.Release();
+            }
+        }
+
+        private List<Game> GetDueAutomaticCheckGames(DateTimeOffset now)
+        {
+            var dueBefore = now - TimeSpan.FromHours(Settings.AutomaticCheckIntervalHours);
+            var games = new List<Game>();
+
+            foreach (var pair in tracking.Games)
+            {
+                var record = pair.Value;
+                if (record == null) continue;
+
+                // Never auto-discover new games. Auto-check only records the user has already started tracking.
+                // A record without a prior attempt can still be due (for example after an explicit reset).
+                if (record.LastAttemptAtUtc.HasValue && record.LastAttemptAtUtc.Value > dueBefore)
+                {
+                    continue;
+                }
+
+                var game = PlayniteApi.Database.Games.Get(pair.Key);
+                if (game == null) continue;
+
+                // A removed DLsite link should not make an old tracking record wake the scheduler every
+                // 15 minutes. Invalid/ambiguous DLsite links are still included so the normal batch path
+                // can record a LinkError and advance LastAttemptAtUtc.
+                var resolution = linkResolver.Resolve(game.Links?.Select(l => l.Url));
+                if (resolution.Status == LinkResolutionStatus.NoDlsiteLink) continue;
+
+                games.Add(game);
+            }
+
+            return games;
         }
 
         private async Task<ProductCheckResult> CheckOneAsync(

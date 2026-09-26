@@ -1,40 +1,84 @@
 <UserControl x:Class="DLsiteUpdateMonitor.PluginSettingsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <StackPanel Margin="20">
-        <TextBlock Text="DLsite Update Monitor 設定" FontSize="16" FontWeight="Bold" Margin="0,0,0,15"/>
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Foreground="{DynamicResource TextBrush}">
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="20">
+            <TextBlock Text="DLsite Update Monitor 設定"
+                       FontSize="16"
+                       FontWeight="Bold"
+                       Margin="0,0,0,15"/>
 
-        <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="230"/>
-                <ColumnDefinition Width="100"/>
-            </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+            <TextBlock Text="自動チェック（既定OFF）"
+                       FontSize="14"
+                       FontWeight="Bold"
+                       Margin="0,0,0,8"/>
 
-            <TextBlock Grid.Row="0" Grid.Column="0" Text="リクエスト間隔（秒）" Margin="0,4"/>
-            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding RequestIntervalSeconds}" Margin="0,2"/>
+            <CheckBox x:Name="AutomaticCheckBox"
+                      Content="追跡中のゲームを自動チェックする"
+                      IsChecked="{Binding EnableAutomaticChecks}"
+                      Margin="0,0,0,8"/>
 
-            <TextBlock Grid.Row="1" Grid.Column="0" Text="タイムアウト（秒）" Margin="0,4"/>
-            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding TimeoutSeconds}" Margin="0,2"/>
+            <Grid Margin="0,0,0,4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="230"/>
+                    <ColumnDefinition Width="100"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0"
+                           Text="自動チェック間隔（時間）"
+                           Margin="0,4"/>
+                <TextBox Grid.Column="1"
+                         Text="{Binding AutomaticCheckIntervalHours}"
+                         IsEnabled="{Binding IsChecked, ElementName=AutomaticCheckBox}"
+                         Margin="0,2"/>
+            </Grid>
 
-            <TextBlock Grid.Row="2" Grid.Column="0" Text="リトライ回数" Margin="0,4"/>
-            <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding RetryCount}" Margin="0,2"/>
+            <TextBlock Text="既に追跡中のゲームだけが対象です。各ゲームの最終試行から設定時間を超えた場合に確認します。Playnite起動直後は約2分待ってから判定し、実行中の手動操作がある場合は次回へ延期します。"
+                       TextWrapping="Wrap"
+                       Foreground="{DynamicResource TextBrush}"
+                       Opacity="0.72"
+                       Margin="0,4,0,0"/>
 
-            <TextBlock Grid.Row="3" Grid.Column="0" Text="キャッシュ（時間）" Margin="0,4"/>
-            <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding CacheHours}" Margin="0,2"/>
+            <Separator Margin="0,18,0,12"/>
 
-            <TextBlock Grid.Row="4" Grid.Column="0" Text="ゲームごとの履歴上限" Margin="0,4"/>
-            <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding HistoryLimit}" Margin="0,2"/>
-        </Grid>
+            <TextBlock Text="通信・履歴"
+                       FontSize="14"
+                       FontWeight="Bold"
+                       Margin="0,0,0,8"/>
 
-        <CheckBox Content="更新状態をPlayniteタグへ反映" IsChecked="{Binding EnableTags}" Margin="0,12,0,0"/>
-        <TextBlock Text="現在のバージョンでは自動チェックを行いません。チェックはメニューから手動実行します。"
-                   TextWrapping="Wrap" Foreground="Gray" Margin="0,12,0,0"/>
-    </StackPanel>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="230"/>
+                    <ColumnDefinition Width="100"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="リクエスト間隔（秒）" Margin="0,4"/>
+                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding RequestIntervalSeconds}" Margin="0,2"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="タイムアウト（秒）" Margin="0,4"/>
+                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding TimeoutSeconds}" Margin="0,2"/>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="リトライ回数" Margin="0,4"/>
+                <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding RetryCount}" Margin="0,2"/>
+
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="キャッシュ（時間）" Margin="0,4"/>
+                <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding CacheHours}" Margin="0,2"/>
+
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="ゲームごとの履歴上限" Margin="0,4"/>
+                <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding HistoryLimit}" Margin="0,2"/>
+            </Grid>
+
+            <CheckBox Content="更新状態をPlayniteタグへ反映"
+                      IsChecked="{Binding EnableTags}"
+                      Margin="0,12,0,8"/>
+        </StackPanel>
+    </ScrollViewer>
 </UserControl>

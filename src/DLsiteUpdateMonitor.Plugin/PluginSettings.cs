@@ -12,6 +12,7 @@ namespace DLsiteUpdateMonitor
         private const int DefaultRetryCount = 2;
         private const int DefaultCacheHours = 24;
         private const int DefaultHistoryLimit = 50;
+        private const int DefaultAutomaticCheckIntervalHours = 24;
 
         private readonly DLsiteUpdateMonitorPlugin plugin;
         private PluginSettings previous;
@@ -22,6 +23,8 @@ namespace DLsiteUpdateMonitor
         public int CacheHours { get; set; } = DefaultCacheHours;
         public int HistoryLimit { get; set; } = DefaultHistoryLimit;
         public bool EnableTags { get; set; } = true;
+        public bool EnableAutomaticChecks { get; set; } = false;
+        public int AutomaticCheckIntervalHours { get; set; } = DefaultAutomaticCheckIntervalHours;
 
         public PluginSettings() { }
 
@@ -44,6 +47,9 @@ namespace DLsiteUpdateMonitor
                     HistoryLimit = IsInRange(saved.HistoryLimit, 10, 500)
                         ? saved.HistoryLimit : DefaultHistoryLimit;
                     EnableTags = saved.EnableTags;
+                    EnableAutomaticChecks = saved.EnableAutomaticChecks;
+                    AutomaticCheckIntervalHours = IsInRange(saved.AutomaticCheckIntervalHours, 1, 168)
+                        ? saved.AutomaticCheckIntervalHours : DefaultAutomaticCheckIntervalHours;
                 }
             }
             catch (Exception)
@@ -66,6 +72,8 @@ namespace DLsiteUpdateMonitor
             CacheHours = previous.CacheHours;
             HistoryLimit = previous.HistoryLimit;
             EnableTags = previous.EnableTags;
+            EnableAutomaticChecks = previous.EnableAutomaticChecks;
+            AutomaticCheckIntervalHours = previous.AutomaticCheckIntervalHours;
         }
 
         public void EndEdit()
@@ -87,6 +95,8 @@ namespace DLsiteUpdateMonitor
                 errors.Add("キャッシュ有効期間は1～168時間にしてください。");
             if (!IsInRange(HistoryLimit, 10, 500))
                 errors.Add("履歴上限は10～500件にしてください。");
+            if (!IsInRange(AutomaticCheckIntervalHours, 1, 168))
+                errors.Add("自動チェック間隔は1～168時間にしてください。");
             return errors.Count == 0;
         }
 
@@ -104,7 +114,9 @@ namespace DLsiteUpdateMonitor
                 RetryCount = RetryCount,
                 CacheHours = CacheHours,
                 HistoryLimit = HistoryLimit,
-                EnableTags = EnableTags
+                EnableTags = EnableTags,
+                EnableAutomaticChecks = EnableAutomaticChecks,
+                AutomaticCheckIntervalHours = AutomaticCheckIntervalHours
             };
         }
     }
