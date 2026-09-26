@@ -479,7 +479,7 @@ namespace DLsiteUpdateMonitor
             });
         }
 
-        private void ShowSummary(List<GameRunResult> results, bool canceled)
+        private static string BuildSummaryText(List<GameRunResult> results, bool canceled)
         {
             var monitored = results.Count(r => !r.Skipped);
             var baseline = results.Count(r => r.ComparisonOutcome == ComparisonOutcome.BaselineCreated);
@@ -489,15 +489,160 @@ namespace DLsiteUpdateMonitor
             var errors = results.Count(r => r.Health != CheckHealth.Healthy && !r.Skipped);
             var skipped = results.Count(r => r.Skipped);
 
-            var text = (canceled ? "※ ユーザー操作により途中でキャンセルされました。処理済み分のみ反映しています。\n\n" : "")
-                + $"対象: {monitored} 件\n"
-                + $"監視開始: {baseline} 件\n"
-                + $"更新あり: {update} 件\n"
-                + $"配布物変更: {file} 件\n"
-                + $"両方変更: {both} 件\n"
-                + $"エラー/要確認: {errors} 件\n"
-                + $"DLsiteリンクなし: {skipped} 件";
-            PlayniteApi.Dialogs.ShowMessage(text, "DLsite Update Monitor");
+            return (canceled ? "※ ユーザー操作により途中でキャンセルされました。処理済み分のみ反映しています。\n\n" : "")
+                + $"チェック完了: {monitored}件"
+                + $" / 監視開始 {baseline}件"
+                + $" / 更新あり {update}件"
+                + $" / 配布物変更 {file}件"
+                + $" / 両方変更 {both}件"
+                + $" / エラー・要確認 {errors}件"
+                + $" / DLsiteリンクなし {skipped}件";
+        }
+
+        private void ShowSummary(List<GameRunResult> results, bool canceled)
+        {
+            PlayniteApi.Dialogs.ShowMessage(BuildSummaryText(results, canceled), "DLsite Update Monitor");
+        }
+
+        private void ShowUpdateCenter(string statusMessage = null)
+        {
+            var centerItems = BuildUpdateCenterItems();
+            var view = new UpdateCenterView(centerItems);
+            if (string.IsNullOrWhiteSpace(statusMessage) && centerItems.Count == 0)
+            {
+                statusMessage = "追跡データはまだありません。まず「全ゲームを今すぐ確認」を実行してください。";
+            }
+            view.SetStatusMessage(statusMessage);
+
+            var window = PlayniteApi.Dialogs.CreateWindow(new WindowCreationOptions
+            {
+                ShowMinimizeButton = false,
+                ShowMaximizeButton = true,
+                ShowCloseButton = true
+            });
+            window.Title = "DLsite Update Monitor — 更新センター";
+            window.Width = 1080;
+            window.Height = 720;
+            window.MinWidth = 820;
+            window.MinHeight = 520;
+            window.Content = view;
+            window.Owner = PlayniteApi.Dialogs.GetCurrentAppWindow();
+            window.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+
+            view.CloseRequested += (sender, args) => window.Close();
+            view.ActionRequested += (sender, args) =>
+            {
+                var games = GetGamesByIds(args.GameIds);
+                if (games.Count == 0)
+                {
+                    view.SetStatusMessage("対象ゲームをPlayniteライブラリから取得できませんでした。");
+                    view.SetItems(BuildUpdateCenterItems());
+                    return;
+                }
+
+                switch (args.Action)
+                {
+                    case UpdateCenterAction.Recheck:
+                        CheckGames(games, true, false, false);
+                        view.SetStatusMessage(games.Count + "件を再確認しました。");
+                        break;
+                    case UpdateCenterAction.MarkApplied:
+                        var applied = Acknowledge(games, false, false);
+                        if (applied >= 0) view.SetStatusMessage(applied + "件を適用済みにしました。");
+                        break;
+                    case UpdateCenterAction.Ignore:
+                        var ignored = Acknowledge(games, true, false);
+                        if (ignored >= 0) view.SetStatusMessage(ignored + "件を無視済みにしました。");
+                        break;
+                    case UpdateCenterAction.ShowDetails:
+                        ShowTrackingDetails(games.Take(1).ToList());
+                        break;
+                    case UpdateCenterAction.OpenPage:
+                        OpenDlsitePage(games.Take(1).ToList());
+                        break;
+                }
+
+                view.SetItems(BuildUpdateCenterItems());
+            };
+
+            window.ShowDialog();
+        }
+
+        private List<UpdateCenterItem> BuildUpdateCenterItems()
+        {
+            var games = PlayniteApi.Database.Games.ToDictionary(game => game.Id);
+            var items = new List<UpdateCenterItem>();
+
+            foreach (var pair in tracking.Games)
+            {
+                Game game;
+                if (pair.Value == null || !games.TryGetValue(pair.Key, out game)) continue;
+
+                var record = pair.Value;
+                var state = record.MonitoringState;
+                var health = record.LastCheckHealth;
+                var snapshot = record.CurrentSnapshot ?? record.LastObservation ?? record.AcknowledgedSnapshot;
+                var hasUpdate = state == MonitoringState.PendingUpdateInfo || state == MonitoringState.PendingUpdateAndFileChange;
+                var hasFile = state == MonitoringState.PendingFileChange || state == MonitoringState.PendingUpdateAndFileChange;
+                var hasPending = hasUpdate || hasFile;
+                var hasHealthIssue = health != CheckHealth.Healthy && health != CheckHealth.NeverChecked;
+
+                var errorText = string.Empty;
+                if (record.LastError != null)
+                {
+                    errorText = FormatCheckHealth(record.LastError.Type);
+                    if (!string.IsNullOrWhiteSpace(record.LastError.Message))
+                    {
+                        errorText += ": " + record.LastError.Message;
+                    }
+                }
+                else if (hasHealthIssue)
+                {
+                    errorText = FormatCheckHealth(health);
+                }
+
+                items.Add(new UpdateCenterItem
+                {
+                    GameId = game.Id,
+                    GameName = game.Name ?? "(名前なし)",
+                    ProductId = record.RequestedProductId ?? record.ResolvedProductId ?? "未確定",
+                    ChangeText = FormatUpdateCenterChange(state),
+                    HealthText = FormatCheckHealth(health),
+                    LastCheckText = FormatTimestamp(record.LastAttemptAtUtc),
+                    UpdateInfoText = snapshot == null ? "なし" : FormatUpdateInfo(snapshot.UpdateInfo),
+                    FileSizeText = snapshot == null ? "なし" : FormatFileSize(snapshot.FileSize),
+                    ErrorText = errorText,
+                    HasPendingChange = hasPending,
+                    HasUpdateInfoChange = hasUpdate,
+                    HasFileChange = hasFile,
+                    HasHealthIssue = hasHealthIssue
+                });
+            }
+
+            return items
+                .OrderByDescending(item => item.NeedsAttention)
+                .ThenByDescending(item => item.HasHealthIssue)
+                .ThenBy(item => item.GameName)
+                .ToList();
+        }
+
+        private List<Game> GetGamesByIds(IEnumerable<Guid> gameIds)
+        {
+            var ids = new HashSet<Guid>(gameIds ?? Enumerable.Empty<Guid>());
+            return PlayniteApi.Database.Games.Where(game => ids.Contains(game.Id)).ToList();
+        }
+
+        private static string FormatUpdateCenterChange(MonitoringState state)
+        {
+            switch (state)
+            {
+                case MonitoringState.PendingUpdateInfo: return "更新情報";
+                case MonitoringState.PendingFileChange: return "配布物";
+                case MonitoringState.PendingUpdateAndFileChange: return "更新情報・配布物";
+                case MonitoringState.Clean: return "変更なし";
+                case MonitoringState.Uninitialized: return "未監視";
+                default: return FormatMonitoringState(state);
+            }
         }
 
         private void DiagnoseLinks()
