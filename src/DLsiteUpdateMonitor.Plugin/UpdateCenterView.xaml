@@ -79,7 +79,7 @@
                     <DataGridTextColumn Header="変更" Binding="{Binding ChangeText}" Width="130"/>
                     <DataGridTextColumn Header="ゲーム" Binding="{Binding GameName}" Width="*"/>
                     <DataGridTextColumn Header="確認状態" Binding="{Binding HealthText}" Width="150"/>
-                    <DataGridTextColumn Header="最終チェック" Binding="{Binding LastCheckText}" Width="155"/>
+                    <DataGridTextColumn Header="最終チェック" Binding="{Binding LastCheckText}" Width="125"/>
                     <DataGridTextColumn Header="作品ID" Binding="{Binding ProductId}" Width="115"/>
                 </DataGrid.Columns>
             </DataGrid>
