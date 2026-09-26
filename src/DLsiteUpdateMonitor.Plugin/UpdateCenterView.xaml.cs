@@ -138,18 +138,10 @@ namespace DLsiteUpdateMonitor
         }
 
         private void AppliedButton_Click(object sender, RoutedEventArgs e)
-            => WithSelection(ids =>
-            {
-                if (!plugin.ConfirmBulkAction("適用済み", ids.Count)) return;
-                plugin.AcknowledgeFromUpdateCenter(ids, false);
-            });
+            => WithSelection(ids => plugin.AcknowledgeFromUpdateCenter(ids, false));
 
         private void IgnoreButton_Click(object sender, RoutedEventArgs e)
-            => WithSelection(ids =>
-            {
-                if (!plugin.ConfirmBulkAction("無視", ids.Count)) return;
-                plugin.AcknowledgeFromUpdateCenter(ids, true);
-            });
+            => WithSelection(ids => plugin.AcknowledgeFromUpdateCenter(ids, true));
 
         private void DetailsButton_Click(object sender, RoutedEventArgs e)
             => WithSelection(ids => plugin.ShowTrackingDetailsFromUpdateCenter(ids[0]), true);
