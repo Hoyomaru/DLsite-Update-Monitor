@@ -2,7 +2,7 @@
 
 この文書は、DLsite Update Monitorの現在の内部構造、データフロー、状態遷移、主要な安全設計をまとめます。
 
-公開済みv1.2.0では、v1.1.0の安全設計を基礎にTracking Schema `1`を維持したままUpdate Centerとopt-in automatic schedulerを追加しています。利用方法は [README.md](../README.md)、開発上の不変条件は [DEVELOPMENT.md](../DEVELOPMENT.md) を参照してください。
+v1.3.0 candidateでは、公開済みv1.2.0の安全設計とTracking Schema `1`を維持したまま、Update Centerのsnapshot差分表示、redirect送信前検証、bounded response read、deferred Retry-After、tag再同期を追加しています。利用方法は [README.md](../README.md)、開発上の不変条件は [DEVELOPMENT.md](../DEVELOPMENT.md) を参照してください。
 
 ## 1. 全体構成
 
