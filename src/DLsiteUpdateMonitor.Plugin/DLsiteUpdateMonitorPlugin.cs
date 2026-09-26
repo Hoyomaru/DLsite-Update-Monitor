@@ -24,6 +24,7 @@ namespace DLsiteUpdateMonitor
         private static readonly ILogger Logger = LogManager.GetLogger();
         private readonly SemaphoreSlim operationLock = new SemaphoreSlim(1, 1);
         private readonly DlsiteLinkResolver linkResolver = new DlsiteLinkResolver();
+        private readonly SnapshotDiffer snapshotDiffer = new SnapshotDiffer();
         private readonly TrackingRepository repository;
         private TrackingDatabase tracking;
         private string startupWarning;
@@ -78,6 +79,9 @@ namespace DLsiteUpdateMonitor
                 PlayniteApi.Dialogs.ShowMessage(startupWarning, "DLsite Update Monitor");
                 startupWarning = null;
             }
+            // Reconcile plugin-owned tags with the durable tracking state on startup. A previous
+            // Playnite tag write may have failed after tracking.json was already committed.
+            TryApplyTags(tracking.Games.Keys.ToList(), false);
             ConfigureAutomaticCheckTimer(TimeSpan.FromMinutes(2));
         }
 
@@ -122,7 +126,7 @@ namespace DLsiteUpdateMonitor
             }
             BuildRuntimeServices();
             // Reconcile existing plugin-owned tags immediately when the user toggles tag integration.
-            ApplyTags(tracking.Games.Keys.ToList());
+            TryApplyTags(tracking.Games.Keys.ToList(), false);
             ConfigureAutomaticCheckTimer(TimeSpan.FromSeconds(10));
         }
 
@@ -169,6 +173,12 @@ namespace DLsiteUpdateMonitor
                 Description = "孤立した追跡データを整理",
                 MenuSection = "@DLsite Update Monitor",
                 Action = _ => CleanupOrphanedTracking()
+            };
+            yield return new MainMenuItem
+            {
+                Description = "タグを再同期",
+                MenuSection = "@DLsite Update Monitor",
+                Action = _ => ResyncTags()
             };
             yield return new MainMenuItem
             {
@@ -235,9 +245,9 @@ namespace DLsiteUpdateMonitor
 
                 window.Title = "DLsite Update Monitor — Update Center";
                 window.Width = 1100;
-                window.Height = 680;
+                window.Height = 760;
                 window.MinWidth = 800;
-                window.MinHeight = 500;
+                window.MinHeight = 560;
 
                 var owner = PlayniteApi.Dialogs.GetCurrentAppWindow();
                 if (owner != null)
@@ -350,6 +360,64 @@ namespace DLsiteUpdateMonitor
                 : "自動チェック: OFF";
         }
 
+        internal UpdateCenterDiff GetUpdateCenterDiff(Guid gameId)
+        {
+            GameTrackingRecord record;
+            if (!tracking.Games.TryGetValue(gameId, out record) || record == null)
+            {
+                return new UpdateCenterDiff
+                {
+                    Available = false,
+                    Summary = "監視データがありません。",
+                    BeforeUpdateInfo = "不明",
+                    AfterUpdateInfo = "不明",
+                    BeforeFileSize = "不明",
+                    AfterFileSize = "不明"
+                };
+            }
+
+            var diff = snapshotDiffer.Diff(record.AcknowledgedSnapshot, record.CurrentSnapshot);
+            var beforeUpdate = diff.UpdateInfo?.Before;
+            var afterUpdate = diff.UpdateInfo?.After;
+            var beforeSize = diff.FileSize?.Before;
+            var afterSize = diff.FileSize?.After;
+
+            string summary;
+            if (!diff.Available)
+            {
+                summary = record.AcknowledgedSnapshot == null || record.CurrentSnapshot == null
+                    ? "確認済み基準と現在値が揃うと差分を表示できます。"
+                    : "作品IDが一致しないため差分比較を行いません。";
+            }
+            else
+            {
+                var updateState = diff.UpdateInfo.Comparable
+                    ? (diff.UpdateInfo.Changed ? "更新情報: 変更あり" : "更新情報: 変更なし")
+                    : "更新情報: 比較不能";
+                var sizeState = diff.FileSize.Comparable
+                    ? (diff.FileSize.Changed ? "容量: 変更あり" : "容量: 変更なし")
+                    : "容量: 比較不能";
+                summary = updateState + " / " + sizeState;
+            }
+
+            return new UpdateCenterDiff
+            {
+                Available = diff.Available,
+                Summary = summary,
+                BeforeUpdateInfo = FormatUpdateInfo(beforeUpdate),
+                AfterUpdateInfo = FormatUpdateInfo(afterUpdate),
+                BeforeFileSize = FormatFileSize(beforeSize),
+                AfterFileSize = FormatFileSize(afterSize),
+                UpdateInfoChanged = diff.UpdateInfo != null && diff.UpdateInfo.Comparable && diff.UpdateInfo.Changed,
+                FileSizeChanged = diff.FileSize != null && diff.FileSize.Comparable && diff.FileSize.Changed
+            };
+        }
+
+        internal void ResyncTagsFromUpdateCenter()
+        {
+            ResyncTags();
+        }
+
         private List<Game> ResolveGames(IEnumerable<Guid> gameIds)
         {
             if (gameIds == null) return new List<Game>();
@@ -454,8 +522,8 @@ namespace DLsiteUpdateMonitor
                     return;
                 }
 
-                ApplyTags(results.Select(r => r.GameId).Distinct().ToList());
-                ShowSummary(results, progressResult.Canceled);
+                var tagsSynchronized = TryApplyTags(results.Select(r => r.GameId).Distinct().ToList(), false);
+                ShowSummary(results, progressResult.Canceled, tagsSynchronized);
             }
             finally
             {
@@ -603,7 +671,11 @@ namespace DLsiteUpdateMonitor
                     automaticCheckCancellation.Token,
                     null));
 
-                ApplyTags(results.Select(r => r.GameId).Distinct().ToList());
+                var tagsSynchronized = TryApplyTags(results.Select(r => r.GameId).Distinct().ToList(), false);
+                if (!tagsSynchronized)
+                {
+                    Logger.Warn("Automatic DLsite check saved tracking state, but Playnite tag synchronization failed.");
+                }
                 var errors = results.Count(r => !r.Skipped && r.Health != CheckHealth.Healthy);
                 var changes = results.Count(r => r.State == MonitoringState.PendingUpdateInfo
                     || r.State == MonitoringState.PendingFileChange
@@ -636,10 +708,20 @@ namespace DLsiteUpdateMonitor
                 var record = pair.Value;
                 if (record == null) continue;
 
-                // Never auto-discover new games. Auto-check only records the user has already started tracking.
-                // A record without a prior attempt can still be due (for example after an explicit reset).
-                if (record.LastAttemptAtUtc.HasValue && record.LastAttemptAtUtc.Value > dueBefore)
+                // A server-provided retry deadline takes precedence over the normal automatic interval.
+                // Before the deadline, do not hammer the endpoint; once the deadline passes, retry on the
+                // next scheduler poll even if the normal interval has not elapsed yet.
+                if (record.RetryNotBeforeUtc.HasValue)
                 {
+                    if (record.RetryNotBeforeUtc.Value > now)
+                    {
+                        continue;
+                    }
+                }
+                else if (record.LastAttemptAtUtc.HasValue && record.LastAttemptAtUtc.Value > dueBefore)
+                {
+                    // Never auto-discover new games. Auto-check only records the user has already started tracking.
+                    // A record without a prior attempt can still be due (for example after an explicit reset).
                     continue;
                 }
 
@@ -776,6 +858,44 @@ namespace DLsiteUpdateMonitor
             }
         }
 
+        private void ResyncTags()
+        {
+            if (!TryEnterMutationOperation()) return;
+            try
+            {
+                var ids = tracking.Games.Keys.ToList();
+                if (TryApplyTags(ids, true))
+                {
+                    PlayniteApi.Dialogs.ShowMessage(ids.Count + "件の追跡状態からタグを再同期しました。", "DLsite Update Monitor");
+                }
+            }
+            finally
+            {
+                operationLock.Release();
+            }
+        }
+
+        private bool TryApplyTags(List<Guid> gameIds, bool showErrorDialog)
+        {
+            try
+            {
+                ApplyTags(gameIds ?? new List<Guid>());
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "Failed to synchronize DLsite monitor tags.");
+                if (showErrorDialog)
+                {
+                    PlayniteApi.Dialogs.ShowErrorMessage(
+                        "追跡状態は保存済みですが、Playniteタグの同期に失敗しました。"
+                        + "\nメニューの「タグを再同期」から再試行できます。\n\n" + ex.Message,
+                        "DLsite Update Monitor");
+                }
+                return false;
+            }
+        }
+
         private void ApplyTags(List<Guid> gameIds)
         {
             PlayniteApi.MainView.UIDispatcher.Invoke(() =>
@@ -795,7 +915,7 @@ namespace DLsiteUpdateMonitor
             });
         }
 
-        private void ShowSummary(List<GameRunResult> results, bool canceled)
+        private void ShowSummary(List<GameRunResult> results, bool canceled, bool tagsSynchronized)
         {
             var monitored = results.Count(r => !r.Skipped);
             var baseline = results.Count(r => r.ComparisonOutcome == ComparisonOutcome.BaselineCreated);
@@ -806,6 +926,7 @@ namespace DLsiteUpdateMonitor
             var skipped = results.Count(r => r.Skipped);
 
             var text = (canceled ? "※ ユーザー操作により途中でキャンセルされました。処理済み分のみ反映しています。\n\n" : "")
+                + (tagsSynchronized ? "" : "※ 追跡結果は保存済みですが、Playniteタグの同期に失敗しました。「タグを再同期」から再試行できます。\n\n")
                 + $"対象: {monitored} 件\n"
                 + $"監視開始: {baseline} 件\n"
                 + $"更新あり: {update} 件\n"
@@ -896,6 +1017,7 @@ namespace DLsiteUpdateMonitor
                 "初回チェック: " + FormatTimestamp(record.FirstCheckedAtUtc),
                 "最終試行: " + FormatTimestamp(record.LastAttemptAtUtc),
                 "最終成功: " + FormatTimestamp(record.LastSuccessfulCheckAtUtc),
+                "再試行可能: " + FormatTimestamp(record.RetryNotBeforeUtc),
                 string.Empty
             };
 
@@ -1068,15 +1190,34 @@ namespace DLsiteUpdateMonitor
                     if (!working.Games.TryGetValue(game.Id, out record) || record == null) continue;
                     if (stateMachine.AcknowledgeCurrent(record, ignored, DateTimeOffset.UtcNow)) changed.Add(game.Id);
                 }
-                repository.Save(working, DateTimeOffset.UtcNow);
-                tracking = working;
-                ApplyTags(changed);
-                PlayniteApi.Dialogs.ShowMessage($"{changed.Count}件を{(ignored ? "無視済み" : "適用済み")}にしました。", "DLsite Update Monitor");
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex, "Failed to acknowledge DLsite tracking state.");
-                PlayniteApi.Dialogs.ShowErrorMessage("追跡状態を保存できませんでした。変更は確定していません。\n\n" + ex.Message, "DLsite Update Monitor");
+
+                try
+                {
+                    repository.Save(working, DateTimeOffset.UtcNow);
+                    tracking = working;
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error(ex, "Failed to save acknowledged DLsite tracking state.");
+                    PlayniteApi.Dialogs.ShowErrorMessage(
+                        "追跡状態を保存できませんでした。変更は確定していません。\n\n" + ex.Message,
+                        "DLsite Update Monitor");
+                    return;
+                }
+
+                var tagsSynchronized = TryApplyTags(changed, false);
+                if (!tagsSynchronized)
+                {
+                    PlayniteApi.Dialogs.ShowErrorMessage(
+                        $"追跡状態は保存済みで、{changed.Count}件を{(ignored ? "無視済み" : "適用済み")}にしました。"
+                        + "\nただしPlayniteタグの同期に失敗しました。「タグを再同期」から再試行できます。",
+                        "DLsite Update Monitor");
+                    return;
+                }
+
+                PlayniteApi.Dialogs.ShowMessage(
+                    $"{changed.Count}件を{(ignored ? "無視済み" : "適用済み")}にしました。",
+                    "DLsite Update Monitor");
             }
             finally
             {
@@ -1105,14 +1246,28 @@ namespace DLsiteUpdateMonitor
                     stateMachine.ResetMonitoring(record, DateTimeOffset.UtcNow);
                     changed.Add(game.Id);
                 }
-                repository.Save(working, DateTimeOffset.UtcNow);
-                tracking = working;
-                ApplyTags(changed);
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex, "Failed to reset DLsite tracking state.");
-                PlayniteApi.Dialogs.ShowErrorMessage("追跡状態を保存できませんでした。変更は確定していません。\n\n" + ex.Message, "DLsite Update Monitor");
+
+                try
+                {
+                    repository.Save(working, DateTimeOffset.UtcNow);
+                    tracking = working;
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error(ex, "Failed to save reset DLsite tracking state.");
+                    PlayniteApi.Dialogs.ShowErrorMessage(
+                        "追跡状態を保存できませんでした。変更は確定していません。\n\n" + ex.Message,
+                        "DLsite Update Monitor");
+                    return;
+                }
+
+                if (!TryApplyTags(changed, false))
+                {
+                    PlayniteApi.Dialogs.ShowErrorMessage(
+                        "監視Baselineのリセットは保存済みですが、Playniteタグの同期に失敗しました。"
+                        + "\n「タグを再同期」から再試行できます。",
+                        "DLsite Update Monitor");
+                }
             }
             finally
             {

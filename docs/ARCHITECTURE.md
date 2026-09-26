@@ -27,6 +27,7 @@ flowchart LR
         Parser[DlsitePageParser]
         Cache[SnapshotCache]
         Compare[SnapshotComparer]
+        Diff[SnapshotDiffer]
         State[TrackingStateMachine]
         Clone[TrackingDatabaseCloner]
         Repo[TrackingRepository]
@@ -45,6 +46,7 @@ flowchart LR
     Check --> Parser
     Check --> State
     State --> Compare
+    Orchestrator --> Diff
     Orchestrator --> Clone
     Orchestrator --> Repo
     Repo --> Disk
@@ -80,7 +82,7 @@ Playnite SDKから独立します。
 - URL / ProductId resolution
 - HTTP / retry / trust validation
 - HTML parser / normalizer
-- RemoteSnapshot / validation / fingerprint / comparison
+- RemoteSnapshot / validation / fingerprint / comparison / field diff
 - Monitoring state machine
 - memory cache
 - deep clone
@@ -108,17 +110,21 @@ Resolverの条件:
 - HTTP URLはHTTPSへcanonicalize
 - 異なる複数ProductIdは`Ambiguous`
 
-HTTP responseでも最終URLを再検証します。
+HTTP redirectは`HttpClientHandler.AllowAutoRedirect = false`で自動追跡を止め、各responseの`Location`を検証してから次のGETを送ります。これにより、外部host・HTTP・ローカルネットワーク等の未信頼宛先へ、拒否判定より先に通信する経路を作りません。
 
 ```text
 Registered HTTP(S) DLsite URL
   ↓ Resolver: HTTPS canonicalization
 HTTPS DLsite URL
-  ↓ HttpClient / redirects
-Final RequestUri
-  ↓ trust check
-absolute + HTTPS + dlsite.com/*.dlsite.com のみ受理
+  ↓ GET (auto redirect OFF)
+3xx + Location
+  ↓ next URIを送信前にtrust check
+absolute + HTTPS + dlsite.com/*.dlsite.com ?
+  ├─ No  → UntrustedRedirect（次のGETは送らない）
+  └─ Yes → 次のGET（redirect上限あり）
 ```
+
+429の`Retry-After`は短い上限を超える場合、その場で長時間待機せず`RateLimited`として返します。HTTP本文もサイズ上限付きで読み込み、異常に大きなresponseを全量保持しません。
 
 最終URLがHTTPや外部hostなら`UntrustedRedirect`です。Parserへ信頼できないHTMLを渡しません。
 

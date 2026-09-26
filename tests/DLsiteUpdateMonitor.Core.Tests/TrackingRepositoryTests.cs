@@ -98,6 +98,40 @@ namespace DLsiteUpdateMonitor.Core.Tests
             Assert.NotNull(loaded.Database.Games[id]);
         }
 
+        [Theory]
+        [InlineData("{\"SchemaVersion\":1}")]
+        [InlineData("{\"SchemaVersion\":1,\"Games\":null}")]
+        [InlineData("{\"SchemaVersion\":1,\"Games\":[]}")]
+        public void MissingNullOrWrongTypedGames_UsesBackupAndPreservesRecovery(string invalidPrimary)
+        {
+            var id = Guid.NewGuid();
+            var repo = new TrackingRepository(directory);
+            var db = new TrackingDatabase { CreatedAtUtc = DateTimeOffset.UtcNow };
+            db.Games[id] = new GameTrackingRecord { PlayniteGameId = id, RequestedProductId = "RJ01234567" };
+
+            repo.Save(db, DateTimeOffset.Parse("2026-09-14T01:00:00Z"));
+            repo.Save(db, DateTimeOffset.Parse("2026-09-14T02:00:00Z"));
+
+            var primary = Path.Combine(directory, "tracking.json");
+            File.WriteAllText(primary, invalidPrimary);
+
+            var recovered = repo.Load();
+
+            Assert.Equal(TrackingLoadSource.Backup, recovered.Source);
+            Assert.True(recovered.Database.Games.ContainsKey(id));
+            Assert.False(string.IsNullOrWhiteSpace(recovered.Warning));
+
+            repo.Save(recovered.Database, DateTimeOffset.Parse("2026-09-14T03:00:00Z"));
+            Assert.NotEmpty(Directory.GetFiles(directory, "tracking.json.corrupt-*"));
+
+            File.WriteAllText(primary, "{ broken again");
+            var secondRepo = new TrackingRepository(directory);
+            var secondRecovery = secondRepo.Load();
+
+            Assert.Equal(TrackingLoadSource.Backup, secondRecovery.Source);
+            Assert.True(secondRecovery.Database.Games.ContainsKey(id));
+        }
+
         [Fact]
         public void CorruptPrimaryWithoutBackup_IsPreservedBeforeNewSave()
         {

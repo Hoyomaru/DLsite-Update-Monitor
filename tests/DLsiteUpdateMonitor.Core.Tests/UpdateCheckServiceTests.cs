@@ -80,6 +80,34 @@ namespace DLsiteUpdateMonitor.Core.Tests
         }
 
         [Fact]
+        public async Task LongRetryAfter_PersistsRetryDeadlineWithoutChangingPendingState()
+        {
+            var response = new HttpResponseMessage((HttpStatusCode)429)
+            {
+                RequestMessage = new HttpRequestMessage(HttpMethod.Get, Url)
+            };
+            response.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromHours(2));
+            var handler = new SequenceHandler(response);
+            using var http = CreateHttp(handler);
+            var service = CreateService(http);
+            var acknowledged = TestSnapshots.Make(productId: ProductId, updateNormalized: "2026-09-01", size: 1000);
+            var current = TestSnapshots.Make(productId: ProductId, updateNormalized: "2026-09-10", size: 1200);
+            var record = new GameTrackingRecord
+            {
+                MonitoringState = MonitoringState.PendingUpdateAndFileChange,
+                AcknowledgedSnapshot = SnapshotCloner.Clone(acknowledged),
+                CurrentSnapshot = SnapshotCloner.Clone(current)
+            };
+
+            var result = await service.CheckAsync(record, Target(), true, CancellationToken.None);
+
+            Assert.Equal(CheckHealth.RateLimited, result.Health);
+            Assert.Equal(MonitoringState.PendingUpdateAndFileChange, record.MonitoringState);
+            Assert.Equal(DateTimeOffset.Parse("2026-09-14T12:00:00Z"), record.RetryNotBeforeUtc);
+            Assert.Contains("Retry not before", record.LastError.Message);
+        }
+
+        [Fact]
         public async Task DegradedParse_DoesNotOverwriteCurrentSnapshot()
         {
             var handler = new SequenceHandler(Response(HttpStatusCode.OK, Url, HealthyHtml("2026年09月20日", "not-a-size")));

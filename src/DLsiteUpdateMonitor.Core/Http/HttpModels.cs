@@ -38,5 +38,8 @@ namespace DLsiteUpdateMonitor.Core.Http
         public int RetryCount { get; set; } = 2;
         public TimeSpan FirstRetryDelay { get; set; } = TimeSpan.FromSeconds(2);
         public TimeSpan SecondRetryDelay { get; set; } = TimeSpan.FromSeconds(5);
+        public TimeSpan MaxRetryAfterDelay { get; set; } = TimeSpan.FromSeconds(30);
+        public int MaxRedirects { get; set; } = 5;
+        public int MaxResponseBytes { get; set; } = 10 * 1024 * 1024;
     }
 }

@@ -53,6 +53,28 @@ namespace DLsiteUpdateMonitor.Core.Tests
         }
 
         [Fact]
+        public void NestedUpdateInfo_FallsBackToVisibleText()
+        {
+            var result = ParseFixture("nested-update.html");
+
+            Assert.Equal(ParseHealth.Healthy, result.Health);
+            Assert.Equal(ObservationState.Parsed, result.Snapshot.UpdateInfo.State);
+            Assert.Contains("2026-09-25", result.Snapshot.UpdateInfo.Normalized);
+            Assert.Contains("不具合を修正しました", result.Snapshot.UpdateInfo.Normalized);
+            Assert.Equal(1024L * 1024L * 1024L, result.Snapshot.FileSize.Value);
+        }
+
+        [Fact]
+        public void ConflictingMultipleFileSizes_AreDegradedInsteadOfTakingFirstValue()
+        {
+            var result = ParseFixture("multiple-file-sizes.html");
+
+            Assert.Equal(ParseHealth.Degraded, result.Health);
+            Assert.Equal(ObservationState.Unparsed, result.Snapshot.FileSize.State);
+            Assert.Contains(result.Diagnostics, x => x.Contains("File size row exists"));
+        }
+
+        [Fact]
         public void InvalidFileSize_IsDegraded_AndCannotBeCompared()
         {
             var result = ParseFixture("bad-size.html");

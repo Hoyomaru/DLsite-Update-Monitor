@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -29,17 +31,48 @@ namespace DLsiteUpdateMonitor.Core.Parsing
                 .Replace(",", string.Empty)
                 .Trim();
 
-            var match = SizePattern.Match(text);
-            if (!match.Success)
+            var matches = SizePattern.Matches(text);
+            if (matches.Count == 0)
             {
                 return Failed();
             }
 
+            var values = new List<long>();
+            foreach (Match match in matches)
+            {
+                long bytes;
+                if (!TryConvertToBytes(match, out bytes))
+                {
+                    return Failed();
+                }
+                values.Add(bytes);
+            }
+
+            // A cell can contain the same size in two units (for example "1 GB / 1024 MB").
+            // That is still unambiguous. Conflicting sizes, however, may describe multiple
+            // download variants and must not be silently reduced to the first number.
+            var distinct = values.Distinct().ToList();
+            if (distinct.Count != 1)
+            {
+                return Failed();
+            }
+
+            return new FileSizeParseResult
+            {
+                Success = true,
+                Bytes = distinct[0],
+                Normalized = distinct[0].ToString(CultureInfo.InvariantCulture) + " B"
+            };
+        }
+
+        private static bool TryConvertToBytes(Match match, out long bytes)
+        {
+            bytes = 0;
             decimal number;
             if (!decimal.TryParse(match.Groups["number"].Value, NumberStyles.AllowDecimalPoint,
                 CultureInfo.InvariantCulture, out number) || number < 0)
             {
-                return Failed();
+                return false;
             }
 
             var unit = match.Groups["unit"].Value.ToUpperInvariant();
@@ -53,7 +86,7 @@ namespace DLsiteUpdateMonitor.Core.Parsing
                 case "MIB": multiplier = 1024m * 1024m; break;
                 case "GB":
                 case "GIB": multiplier = 1024m * 1024m * 1024m; break;
-                default: return Failed();
+                default: return false;
             }
 
             try
@@ -61,20 +94,15 @@ namespace DLsiteUpdateMonitor.Core.Parsing
                 var bytesDecimal = decimal.Round(number * multiplier, 0, MidpointRounding.AwayFromZero);
                 if (bytesDecimal > long.MaxValue)
                 {
-                    return Failed();
+                    return false;
                 }
 
-                var bytes = (long)bytesDecimal;
-                return new FileSizeParseResult
-                {
-                    Success = true,
-                    Bytes = bytes,
-                    Normalized = bytes.ToString(CultureInfo.InvariantCulture) + " B"
-                };
+                bytes = (long)bytesDecimal;
+                return true;
             }
             catch (OverflowException)
             {
-                return Failed();
+                return false;
             }
         }
 

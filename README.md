@@ -47,8 +47,9 @@ v1.2.0の変更点と検証内容は [docs/RELEASE_NOTES_1.2.0.md](docs/RELEASE_
 ## 主な機能
 
 - Playniteの`Game.Links`からDLsite作品IDを解決
-- HTTPのDLsiteリンクをHTTPSへ正規化し、取得後URLもHTTPS + DLsite hostか検証
+- HTTPのDLsiteリンクをHTTPSへ正規化し、各redirect先を送信前にHTTPS + DLsite hostか検証
 - Update Centerで追跡中ゲームの更新・要確認状態を一覧表示
+- Update Centerで確認済み基準と現在値の「更新情報」「ファイル容量」を左右に並べた差分表示
 - Update Centerから検索・状態フィルタ・複数選択・適用済み/無視/再確認
 - 全ゲームまたは選択ゲームの手動チェック
 - 追跡済みゲームの定期自動チェック（既定OFF）
@@ -60,12 +61,16 @@ v1.2.0の変更点と検証内容は [docs/RELEASE_NOTES_1.2.0.md](docs/RELEASE_
 - 同一作品IDへのバッチ内重複通信の抑制
 - 24時間を既定値とするメモリキャッシュ
 - 更新状態のPlayniteタグ反映
+- tracking JSONの確定状態からPlayniteタグを再同期する修復操作
 - 1ゲーム単位の監視詳細表示（Baseline / Current / LastObservation / Health / Error / History）
 - 「適用済み」「無視」「監視状態をリセット」操作
 - Playniteから削除済みゲームに対応する孤立tracking recordの確認付き整理
 - `tracking.json`の一時ファイル経由保存、バックアップ、破損保護
 - backup復旧後も正常backupを失わない保存処理
 - 429 / timeout / 一時ネットワークエラー / 5xxの再試行
+- 長い`Retry-After`は同一操作内で待ち続けず、後続操作へロックを返す
+- HTTP redirectは自動追跡せず、各`Location`を検証してから次のGETを送信
+- HTTPレスポンス本文にサイズ上限を設け、異常に大きい応答を拒否
 - 予期しない4xxを無駄に再試行しない処理
 - 不確定な解析結果や作品ID不一致時のfail-closed動作
 - GitHub ActionsによるCoreテスト、Windows Plugin build、payload境界検証
@@ -97,22 +102,22 @@ v1.2.0の変更点と検証内容は [docs/RELEASE_NOTES_1.2.0.md](docs/RELEASE_
 
 `Playnite.SDK.dll`、`AngleSharp.dll`、`Newtonsoft.Json.dll`はPlaynite本体側のランタイムを利用し、プラグインへ重複同梱しません。
 
-ネットワーク通信はDLsiteの商品ページへのHTTP GETです。登録された`http://`のDLsiteリンクはHTTPSへ正規化し、最終取得先もHTTPSかつ`dlsite.com` / `*.dlsite.com`であることを要求します。外部APIキーやアクセストークンは使用しません。
+ネットワーク通信はDLsiteの商品ページへのHTTP GETです。登録された`http://`のDLsiteリンクはHTTPSへ正規化します。redirectは自動追跡せず、次のGETを送る前に各`Location`がHTTPSかつ`dlsite.com` / `*.dlsite.com`であることを検証します。外部APIキーやアクセストークンは使用しません。
 
 ## インストール
 
 ### 一般利用者向け
 
-正式公開版を使う場合は [v1.1.0 Release](https://github.com/Hoyomaru/DLsite-Update-Monitor/releases/tag/v1.1.0) のAssetsから次の`.pext`をダウンロードし、Playniteへインストールしてください。
+正式公開版を使う場合は [v1.2.0 Release](https://github.com/Hoyomaru/DLsite-Update-Monitor/releases/tag/v1.2.0) のAssetsから次の`.pext`をダウンロードし、Playniteへインストールしてください。
 
 ```text
-DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_1_0.pext
+DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_2_0.pext
 ```
 
 公開AssetのSHA-256:
 
 ```text
-9128b3ca11472b322d5307e6820b7fae902ca13d284b02645b87b9b3aace15de
+59a8456ff48036ad8d0dd47a69d2f6a9b7065959a1f94aadf49af073081cbfba
 ```
 
 同じReleaseに添付されている`SHA256SUMS.txt`も確認用に利用できます。
@@ -120,7 +125,7 @@ DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_1_0.pext
 `.pext`はソースツリーへコミットせず、GitHub Releasesで配布します。
 
 > [!NOTE]
-> `main`には今後Unreleasedの変更が入る可能性があります。安定版を利用する場合はGitHub Releaseのv1.1.0配布物を使用してください。
+> `main`には今後Unreleasedの変更が入る可能性があります。安定版を利用する場合はGitHub Releaseのv1.2.0配布物を使用してください。
 
 Release作成手順は [docs/RELEASE.md](docs/RELEASE.md) を参照してください。
 
@@ -153,7 +158,7 @@ GitHub Actionsの実機テスト候補では、Windows build jobが`DLsiteUpdate
 
 ## 更新
 
-公開v1.0.0とv1.1.0はどちらもTracking Schema `1`を使用しています。v1.0.0からv1.1.0への更新でTracking Schema migrationは発生しません。
+公開v1.0.0、v1.1.0、v1.2.0はいずれもTracking Schema `1`を使用しています。これらのVersion間の更新でTracking Schema migrationは発生しません。
 
 更新時は念のためPlayniteまたはプラグインユーザーデータをバックアップしてから、新しい検証済みパッケージへ更新してください。
 
@@ -194,7 +199,9 @@ Update Centerでは、追跡済みゲームを一覧で確認できます。
 - 複数ゲームを選択して **適用済みにする** / **無視する**
 - 選択ゲームを再確認
 - エラー・要確認ゲームをまとめて再確認
+- 1ゲーム選択時、確認済み基準と現在値の更新情報・ファイル容量を左右比較
 - 1ゲームの監視詳細表示
+- tracking状態からPlayniteタグを再同期
 - DLsiteページを開く
 
 一覧は内部状態名をそのまま見せず、`更新情報`、`配布物`、`確認が必要`などユーザーが次の操作を判断しやすい表現を使います。Update Center上部には、自動チェックのON/OFFと設定間隔も表示します。
@@ -209,7 +216,8 @@ Update Centerでは、追跡済みゲームを一覧で確認できます。
 - 設定可能: **1～168時間**
 - Playnite起動直後は約2分待ってから判定
 - その後は15分ごとに期限超過レコードの有無だけを確認
-- 各ゲームの `LastAttemptAtUtc` が設定間隔より古い場合だけ対象
+- 通常は各ゲームの `LastAttemptAtUtc` が設定間隔より古い場合だけ対象
+- DLsiteが`Retry-After`を返した場合は`RetryNotBeforeUtc`を保存し、その時刻までは待機せずschedulerへ返す。期限後は通常間隔より優先して次のpollで再確認
 - 自動チェックはキャッシュに依存せず、期限到達時にリモートを再確認
 - 手動チェックや状態変更が実行中なら、その回は開始せず次回判定へ延期
 - 完了MessageBoxやエラーMessageBoxは表示せず、結果はtracking / Playniteタグ / Update Centerへ反映
@@ -244,7 +252,9 @@ DLsite Update Monitor > DLsiteリンク診断
 - 差分なし → `Clean`
 - 安全に比較できない → 既存監視状態を維持してエラー/要確認扱い
 
-`監視詳細を表示`では、確認済み基準、現在の比較可能状態、直近観測、CheckHealth、最終エラー、最近の履歴を1ゲーム単位で確認できます。
+Update Centerで1ゲームだけ選択すると、確認済み基準と現在値の`更新情報`・`ファイル容量`を左右に並べた差分ビューを確認できます。比較不能な観測を変更ありとして誤表示せず、既存の比較ルールと同じ安全条件を使います。
+
+`監視詳細を表示`では、確認済み基準、現在の比較可能状態、直近観測、CheckHealth、最終エラー、再試行可能時刻、最近の履歴を1ゲーム単位で確認できます。
 
 ### 6. エラーだけを再確認する
 
@@ -275,6 +285,7 @@ DLsite Update Monitor > DLsiteリンク診断
 | エラー/要確認のゲームを再確認 | 最後のCheckHealthが異常な追跡済みゲームだけを強制再確認 |
 | DLsiteリンク診断 | リンク状態を集計し、問題ゲーム名・理由・候補ProductIdを表示 |
 | 孤立した追跡データを整理 | Playniteに存在しないGameIdのtracking recordをPreview・確認後に削除 |
+| タグを再同期 | tracking JSONの確定状態からPlugin管理タグを再適用し、部分失敗後の表示ずれを修復 |
 | キャッシュをクリア | プロセス内のスナップショットキャッシュを消去 |
 
 ### ゲーム右クリックメニュー
