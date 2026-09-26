@@ -17,8 +17,11 @@ namespace DLsiteUpdateMonitor
 
         internal UpdateCenterView(DLsiteUpdateMonitorPlugin plugin)
         {
-            InitializeComponent();
+            // XAML controls can raise SelectionChanged/TextChanged while InitializeComponent()
+            // is still building the visual tree. Assign the dependency first so those handlers
+            // never observe a null plugin reference during construction.
             this.plugin = plugin ?? throw new ArgumentNullException(nameof(plugin));
+            InitializeComponent();
             RefreshRows();
         }
 
