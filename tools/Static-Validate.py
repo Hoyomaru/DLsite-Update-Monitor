@@ -133,6 +133,11 @@ if update_center_xaml.exists() and update_center_code.exists():
     ]:
         if needle not in uc: errors.append(msg)
 
+    plugin_assign = uc.find('this.plugin = plugin ?? throw new ArgumentNullException(nameof(plugin));')
+    init_component = uc.find('InitializeComponent();')
+    if plugin_assign < 0 or init_component < 0 or plugin_assign > init_component:
+        errors.append('Update Center must assign plugin dependency before InitializeComponent can raise XAML events')
+
 # Automatic-check contract: opt-in, tracked-only, silent, and routed through the shared batch path.
 settings_cs = ROOT/'src/DLsiteUpdateMonitor.Plugin/PluginSettings.cs'
 settings_xaml = ROOT/'src/DLsiteUpdateMonitor.Plugin/PluginSettingsView.xaml'
