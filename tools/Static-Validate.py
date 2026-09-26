@@ -181,6 +181,18 @@ if settings_cs.exists() and settings_xaml.exists() and plugin_cs.exists():
         if 'ShowMessage(' in auto_body or 'ShowErrorMessage(' in auto_body:
             errors.append('Automatic check path must not display modal dialogs')
 
+# Plugin settings discoverability contract.
+plugin_cs_path = ROOT/'src/DLsiteUpdateMonitor.Plugin/DLsiteUpdateMonitorPlugin.cs'
+if plugin_cs_path.exists():
+    pc_settings = plugin_cs_path.read_text(encoding='utf-8-sig')
+    for needle, msg in [
+        ('Properties = new GenericPluginProperties', 'Plugin must initialize GenericPluginProperties'),
+        ('HasSettings = true', 'Plugin must advertise settings to Playnite'),
+        ('Description = "設定を開く"', 'Plugin must expose a direct settings menu entry'),
+        ('Action = _ => OpenSettingsView()', 'Direct settings menu must open the Playnite plugin settings view'),
+    ]:
+        if needle not in pc_settings: errors.append(msg)
+
 # net462 Core uses HttpClient directly, so the framework reference must be explicit.
 if not re.search(r'<Reference\s+Include="System\.Net\.Http"\s*/>', core):
     errors.append('net462 Core is missing explicit System.Net.Http framework reference')
