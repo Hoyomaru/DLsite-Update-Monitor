@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using DLsiteUpdateMonitor.Core.Models;
 using DLsiteUpdateMonitor.Core.Services;
 using Xunit;
@@ -7,6 +8,38 @@ namespace DLsiteUpdateMonitor.Core.Tests
 {
     public sealed class TrackingDatabaseClonerTests
     {
+        [Fact]
+        public void CloneContract_RequiresReviewWhenTrackingRecordPropertiesChange()
+        {
+            var expected = new[]
+            {
+                "AcknowledgedSnapshot",
+                "CurrentSnapshot",
+                "FirstCheckedAtUtc",
+                "History",
+                "LastAttemptAtUtc",
+                "LastCheckHealth",
+                "LastError",
+                "LastObservation",
+                "LastSuccessfulCheckAtUtc",
+                "MonitoringState",
+                "PlayniteGameId",
+                "RegisteredUrl",
+                "RequestedProductId",
+                "ResolvedProductId",
+                "ResolvedUrl",
+                "RetryNotBeforeUtc"
+            };
+
+            var actual = typeof(GameTrackingRecord)
+                .GetProperties()
+                .Select(property => property.Name)
+                .OrderBy(name => name, StringComparer.Ordinal)
+                .ToArray();
+
+            Assert.Equal(expected.OrderBy(name => name, StringComparer.Ordinal), actual);
+        }
+
         [Fact]
         public void Clone_IsDeepEnoughForStagedMutations()
         {
