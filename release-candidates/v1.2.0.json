@@ -15,5 +15,11 @@
     "Direct settings menu and Update Center opened normally.",
     "Existing tracking data remained available.",
     "Representative manual check completed normally."
-  ]
+  ],
+  "release_status": "published",
+  "release_tag": "v1.2.0",
+  "release_commit": "a8a13e96825ea192fb23dca8fd5e1ac5b53e0f10",
+  "release_url": "https://github.com/Hoyomaru/DLsite-Update-Monitor/releases/tag/v1.2.0",
+  "release_asset_digest": "sha256:59a8456ff48036ad8d0dd47a69d2f6a9b7065959a1f94aadf49af073081cbfba",
+  "published_at": "2026-09-27"
 }

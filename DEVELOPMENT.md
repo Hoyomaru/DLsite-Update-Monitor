@@ -12,9 +12,9 @@
 
 | 項目 | 現在の状態 |
 |---|---|
-| Release candidate Version | 1.2.0 |
-| GitHub Release | v1.1.0公開済み / v1.2.0 candidate |
-| 最新公開Git tag | `v1.1.0` |
+| 現在の正式Version | 1.2.0 |
+| GitHub Release | `DLsite Update Monitor v1.2.0` 公開済み |
+| Git tag | `v1.2.0` |
 | Plugin / extension Version | `1.2.0` |
 | Playnite実機基準 | 10.56 |
 | Plugin target | .NET Framework 4.6.2 |
@@ -24,20 +24,20 @@
 | v1.1.0 Windows Plugin build | PASS |
 | v1.1.0 payload境界検証 | PASS |
 | v1.2.0機能実機確認 | Update Center + automatic check Gate H PASS（2026-09-27） |
-| v1.2.0 最終`.pext` install | Release前に実施 |
+| v1.2.0 最終`.pext` install | PASS |
 | Tracking Schema | 1 |
 | GitHub Actions / CI | 導入済み |
 | License | MIT |
 
 v1.1.0は2026-09-15に正式公開済みです。実機Smoke Test Gate A〜G、Version 1.1.0最終Artifact短縮Smoke、最終`.pext`インストール試験まで完了しています。詳細は [docs/RELEASE_NOTES_1.1.0.md](docs/RELEASE_NOTES_1.1.0.md) を参照してください。
 
-v1.2.0 candidateはVersion metadataを同期済みです。最終CI Artifactとpackage install確認後にtag / GitHub Releaseへ進みます。v1.1.0の過去検証結果を新candidateへ自動的に流用しません。
+v1.2.0は2026-09-27に正式公開済みです。Version 1.2.0のexact `.pext`をPlaynite 10.56へinstallして確認した同一Artifactを再buildせずGitHub Releaseへ昇格しています。v1.1.0の過去検証結果とは区別して記録しています。
 
 公開Asset:
 
 ```text
-DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_1_0.pext
-SHA-256: 9128b3ca11472b322d5307e6820b7fae902ca13d284b02645b87b9b3aace15de
+DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_2_0.pext
+SHA-256: 59a8456ff48036ad8d0dd47a69d2f6a9b7065959a1f94aadf49af073081cbfba
 ```
 
 ---

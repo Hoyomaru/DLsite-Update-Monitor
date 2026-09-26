@@ -54,6 +54,21 @@
 - Version 1.2.0 exact `.pext` を公式Playnite 10.56 Toolboxで生成し、同一packageのinstall / Plugin load / settings / Update Center / tracking引き継ぎ / representative manual checkを実機確認。
 - GTM/ABDM/Linkexと同じ検証セッションでRelease対象UI/機能を実機確認。
 
+### Published
+
+2026-09-27にGitHub Releaseとして正式公開しました。
+
+```text
+Release title: DLsite Update Monitor v1.2.0
+Tag: v1.2.0
+Tagged commit: a8a13e96825ea192fb23dca8fd5e1ac5b53e0f10
+Package: DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_2_0.pext
+SHA-256: 59a8456ff48036ad8d0dd47a69d2f6a9b7065959a1f94aadf49af073081cbfba
+```
+
+Release Assetsの `.pext` digestは実機確認済みexact packageのSHA-256と一致確認済みです。
+
+
 ## [1.1.0] - 2026-09-15
 
 v1.1.0は、永続化・URL信頼境界・失敗分離の安全性強化と、診断・再確認・監視詳細・孤立データ整理を中心とした安定化Releaseです。

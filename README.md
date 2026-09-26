@@ -20,29 +20,29 @@ DLsite作品を多数管理していると、各商品ページを手作業で�
 
 ## 現在の状態
 
-- 現在のRelease candidate Version: **1.2.0**
-- GitHub Release: **v1.1.0 公開済み / v1.2.0 release candidate**
-- 最新公開Git tag: **`v1.1.0`**
-- 開発状態: **v1.2.0最終candidate。Version metadata同期済み、最終CI / package install確認待ち**
+- 現在の正式Version: **1.2.0**
+- GitHub Release: **v1.2.0 公開済み**
+- 最新公開Git tag: **`v1.2.0`**
+- 開発状態: **v1.2.0公開済み。次の変更はUnreleasedとして管理**
 - Playnite実機検証基準: **10.56**
-- v1.2.0 candidate Core自動テスト: **GitHub Actionsで最終確認**
-- v1.2.0 candidate Windows Plugin build / payload境界検証: **GitHub Actionsで最終確認**
-- v1.2.0機能実機確認: **Update Center + automatic check Gate H PASS（2026-09-27）**
-- v1.2.0 最終`.pext`インストール試験: **release前に実施**
+- v1.2.0 Core自動テスト / Static validation: **PASS（GitHub Actions）**
+- v1.2.0 Windows Plugin build / payload境界検証: **PASS（GitHub Actions）**
+- v1.2.0 Playnite 10.56実機確認: **Update Center + automatic check Gate H + final `.pext` install PASS**
+- v1.2.0 最終`.pext`インストール試験: **PASS**
 - Tracking Schema: **1**
 - GitHub Actions / CI: **導入済み**
 - License: **MIT**
 
-v1.2.0 candidateは、v1.1.0の安全設計を維持したままUpdate Centerと既定OFFのautomatic checkを追加します。Update Center起動・theme integration・Settings表示・automatic check Gate HはPlaynite 10.56実機で確認済みです。Version 1.2.0 metadata反映後の最終CI Artifactと`.pext` install確認をRelease gateとして残しています。
+v1.2.0は、v1.1.0の安全設計を維持したままUpdate Centerと既定OFFのautomatic checkを追加したbackward-compatible feature releaseです。Update Center起動・theme integration・Settings表示・automatic check Gate H・最終`.pext` installまでPlaynite 10.56実機で確認済みです。
 
-現在公開中のv1.1.0パッケージ:
+現在公開中のv1.2.0パッケージ:
 
 ```text
-DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_1_0.pext
-SHA-256: 9128b3ca11472b322d5307e6820b7fae902ca13d284b02645b87b9b3aace15de
+DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_2_0.pext
+SHA-256: 59a8456ff48036ad8d0dd47a69d2f6a9b7065959a1f94aadf49af073081cbfba
 ```
 
-v1.1.0の変更点と検証内容は [docs/RELEASE_NOTES_1.1.0.md](docs/RELEASE_NOTES_1.1.0.md) を参照してください。v0.1.0の詳細な検証証跡と旧パッケージSHA-256は [RELEASE_STATUS.md](RELEASE_STATUS.md) に保存しています。
+v1.2.0の変更点と検証内容は [docs/RELEASE_NOTES_1.2.0.md](docs/RELEASE_NOTES_1.2.0.md) を参照してください。v1.1.0の記録も [docs/RELEASE_NOTES_1.1.0.md](docs/RELEASE_NOTES_1.1.0.md) に残しています。v0.1.0の詳細な検証証跡と旧パッケージSHA-256は [RELEASE_STATUS.md](RELEASE_STATUS.md) に保存しています。
 
 ## 主な機能
 
