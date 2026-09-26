@@ -112,15 +112,21 @@ namespace DLsiteUpdateMonitor
         {
             yield return new MainMenuItem
             {
+                Description = "更新センターを開く",
+                MenuSection = "@DLsite Update Monitor",
+                Action = _ => ShowUpdateCenter()
+            };
+            yield return new MainMenuItem
+            {
                 Description = "全ゲームを今すぐ確認",
                 MenuSection = "@DLsite Update Monitor",
-                Action = _ => CheckGames(PlayniteApi.Database.Games.ToList(), true)
+                Action = _ => CheckGames(PlayniteApi.Database.Games.ToList(), true, true)
             };
             yield return new MainMenuItem
             {
                 Description = "キャッシュを利用して確認",
                 MenuSection = "@DLsite Update Monitor",
-                Action = _ => CheckGames(PlayniteApi.Database.Games.ToList(), false)
+                Action = _ => CheckGames(PlayniteApi.Database.Games.ToList(), false, true)
             };
             yield return new MainMenuItem
             {
@@ -204,7 +210,7 @@ namespace DLsiteUpdateMonitor
             oldClient?.Dispose();
         }
 
-        private void CheckGames(List<Game> games, bool forceRefresh)
+        private void CheckGames(List<Game> games, bool forceRefresh, bool openUpdateCenterAfter = false)
         {
             if (games == null || games.Count == 0) return;
             if (!EnsurePersistenceWritable()) return;
@@ -321,7 +327,14 @@ namespace DLsiteUpdateMonitor
                 }
 
                 ApplyTags(results.Select(r => r.GameId).Distinct().ToList());
-                ShowSummary(results, progressResult.Canceled);
+                if (openUpdateCenterAfter)
+                {
+                    ShowUpdateCenter(BuildSummaryText(results, progressResult.Canceled));
+                }
+                else
+                {
+                    ShowSummary(results, progressResult.Canceled);
+                }
             }
             finally
             {
@@ -378,7 +391,7 @@ namespace DLsiteUpdateMonitor
                 return;
             }
 
-            CheckGames(games, true);
+            CheckGames(games, true, true);
         }
 
         private void CleanupOrphanedTracking()
