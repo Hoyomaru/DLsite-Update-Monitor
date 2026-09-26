@@ -1,0 +1,117 @@
+name: Publish Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    if: "${{ startsWith(github.event.head_commit.message, 'release: publish v') }}"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve and validate candidate
+        id: candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(python - <<'PY'
+          import json, re, xml.etree.ElementTree as ET
+          from pathlib import Path
+          yaml = Path('src/DLsiteUpdateMonitor.Plugin/extension.yaml').read_text(encoding='utf-8')
+          m = re.search(r'^Version:\s*(\d+(?:\.\d+){2})\s*$', yaml, re.M)
+          if not m: raise SystemExit('extension version missing')
+          version = m.group(1)
+          root = ET.parse('src/DLsiteUpdateMonitor.Plugin/DLsiteUpdateMonitor.Plugin.csproj').getroot()
+          project_version = root.findtext('.//Version')
+          if project_version != version: raise SystemExit('csproj/extension version mismatch')
+          data = json.loads(Path(f'release-candidates/v{version}.json').read_text(encoding='utf-8'))
+          if data['version'] != version: raise SystemExit('candidate version mismatch')
+          if data.get('runtime_install_gate') != 'PASS': raise SystemExit('runtime install gate is not PASS')
+          print(version)
+          PY
+          )"
+          test "${{ github.event.head_commit.message }}" = "release: publish v$VERSION"
+          test -f "docs/RELEASE_NOTES_$VERSION.md"
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+          import re
+          yaml=Path('src/DLsiteUpdateMonitor.Plugin/extension.yaml').read_text(encoding='utf-8')
+          v=re.search(r'^Version:\s*(\d+(?:\.\d+){2})\s*$',yaml,re.M).group(1)
+          d=json.loads(Path(f'release-candidates/v{v}.json').read_text(encoding='utf-8'))
+          print(f'version={v}')
+          print(f'run_id={d["workflow_run_id"]}')
+          print(f'artifact={d["artifact_name"]}')
+          print(f'package={d["package_name"]}')
+          print(f'sha256={d["package_sha256"]}')
+          PY
+
+      - name: Download exact validated release candidate
+        env:
+          GH_TOKEN: "${{ github.token }}"
+          RUN_ID: "${{ steps.candidate.outputs.run_id }}"
+          ARTIFACT: "${{ steps.candidate.outputs.artifact }}"
+        run: |
+          set -euo pipefail
+          mkdir -p release-candidate
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --name "$ARTIFACT" --dir release-candidate
+
+      - name: Verify candidate bytes
+        env:
+          PACKAGE: "${{ steps.candidate.outputs.package }}"
+          EXPECTED: "${{ steps.candidate.outputs.sha256 }}"
+        run: |
+          set -euo pipefail
+          test -f "release-candidate/$PACKAGE"
+          ACTUAL="$(sha256sum "release-candidate/$PACKAGE" | awk '{print $1}')"
+          test "$ACTUAL" = "$EXPECTED"
+          grep -F "$EXPECTED  $PACKAGE" release-candidate/SHA256SUMS.txt
+
+      - name: Create or verify tag
+        env:
+          VERSION: "${{ steps.candidate.outputs.version }}"
+        run: |
+          set -euo pipefail
+          TAG="v$VERSION"
+          REMOTE_SHA="$(git ls-remote --tags origin "refs/tags/$TAG^{}" | awk '{print $1}')"
+          if [ -z "$REMOTE_SHA" ]; then REMOTE_SHA="$(git ls-remote --tags origin "refs/tags/$TAG" | awk '{print $1}')"; fi
+          if [ -n "$REMOTE_SHA" ]; then
+            test "$REMOTE_SHA" = "$GITHUB_SHA"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$TAG" "$GITHUB_SHA" -m "DLsite Update Monitor $TAG"
+            git push origin "$TAG"
+          fi
+
+      - name: Publish exact package
+        env:
+          GH_TOKEN: "${{ github.token }}"
+          VERSION: "${{ steps.candidate.outputs.version }}"
+          PACKAGE: "${{ steps.candidate.outputs.package }}"
+          EXPECTED: "${{ steps.candidate.outputs.sha256 }}"
+        run: |
+          set -euo pipefail
+          TAG="v$VERSION"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; keeping existing release."
+          else
+            gh release create "$TAG" \
+              "release-candidate/$PACKAGE" \
+              "release-candidate/SHA256SUMS.txt" \
+              --verify-tag \
+              --title "DLsite Update Monitor $TAG" \
+              --notes-file "docs/RELEASE_NOTES_$VERSION.md"
+          fi
+          REMOTE="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq ".assets[] | select(.name == \"$PACKAGE\") | .digest")"
+          test "$REMOTE" = "sha256:$EXPECTED"
+          gh release view "$TAG" --json tagName,isDraft,isPrerelease,url

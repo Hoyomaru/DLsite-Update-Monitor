@@ -25,6 +25,20 @@ v1.1.0はCore / Windows CI、Playnite 10.56 Smoke Test Gate A〜G、Version 1.1.
 
 v1.2.0 candidateはVersion metadataを同期済みです。最終CI Artifact、同payloadのpackage化、`.pext` install確認を終えてからtag/Releaseを作成します。
 
+v1.2.0 exact Release Candidate:
+
+```text
+Source/package trigger commit: 789e5fe069913554c7a8682e16d567091bd03a36
+Workflow run: 36276265261
+Artifact: DLsiteUpdateMonitor-v1.2.0-release-candidate-789e5fe069913554c7a8682e16d567091bd03a36
+Package: DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_2_0.pext
+SHA-256: 59a8456ff48036ad8d0dd47a69d2f6a9b7065959a1f94aadf49af073081cbfba
+Toolbox: official Playnite 10.56
+Runtime install gate: PENDING
+```
+
+このpackageを実機確認した後、`release-candidates/v1.2.0.json` の `runtime_install_gate` を `PASS` へ更新してからpublishします。publish workflowはこのArtifactを再buildせず、そのままGitHub Releaseへ昇格します。
+
 過去v0.1.0検証証跡: [../RELEASE_STATUS.md](../RELEASE_STATUS.md)
 
 v1.1.0公開本文: [RELEASE_NOTES_1.1.0.md](RELEASE_NOTES_1.1.0.md)

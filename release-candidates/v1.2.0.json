@@ -1,0 +1,11 @@
+{
+  "version": "1.2.0",
+  "source_commit": "789e5fe069913554c7a8682e16d567091bd03a36",
+  "workflow_run_id": 36276265261,
+  "artifact_id": 10916927854,
+  "artifact_name": "DLsiteUpdateMonitor-v1.2.0-release-candidate-789e5fe069913554c7a8682e16d567091bd03a36",
+  "package_name": "DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_2_0.pext",
+  "package_sha256": "59a8456ff48036ad8d0dd47a69d2f6a9b7065959a1f94aadf49af073081cbfba",
+  "playnite_toolbox_release": "10.56",
+  "runtime_install_gate": "PENDING"
+}
