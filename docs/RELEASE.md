@@ -9,6 +9,8 @@
 
 ## 1. 現在の公開状況
 
+v1.3.0は2026-09-27の実環境Smoke確認を完了し、exact release candidate生成段階です。正式公開中Versionはv1.2.0のままです。v1.3.0はcandidate packageのexact `.pext` install gateを通過後に公開します。
+
 v1.2.0は2026-09-27に正式公開済みです。Update Center / automatic checkを含むbackward-compatible feature releaseです。
 
 ```text
