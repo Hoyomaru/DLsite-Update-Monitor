@@ -47,8 +47,9 @@ v1.2.0の変更点と検証内容は [docs/RELEASE_NOTES_1.2.0.md](docs/RELEASE_
 ## 主な機能
 
 - Playniteの`Game.Links`からDLsite作品IDを解決
-- HTTPのDLsiteリンクをHTTPSへ正規化し、取得後URLもHTTPS + DLsite hostか検証
+- HTTPのDLsiteリンクをHTTPSへ正規化し、各redirect先を送信前にHTTPS + DLsite hostか検証
 - Update Centerで追跡中ゲームの更新・要確認状態を一覧表示
+- Update Centerで確認済み基準と現在値の「更新情報」「ファイル容量」を左右に並べた差分表示
 - Update Centerから検索・状態フィルタ・複数選択・適用済み/無視/再確認
 - 全ゲームまたは選択ゲームの手動チェック
 - 追跡済みゲームの定期自動チェック（既定OFF）
@@ -60,12 +61,16 @@ v1.2.0の変更点と検証内容は [docs/RELEASE_NOTES_1.2.0.md](docs/RELEASE_
 - 同一作品IDへのバッチ内重複通信の抑制
 - 24時間を既定値とするメモリキャッシュ
 - 更新状態のPlayniteタグ反映
+- tracking JSONの確定状態からPlayniteタグを再同期する修復操作
 - 1ゲーム単位の監視詳細表示（Baseline / Current / LastObservation / Health / Error / History）
 - 「適用済み」「無視」「監視状態をリセット」操作
 - Playniteから削除済みゲームに対応する孤立tracking recordの確認付き整理
 - `tracking.json`の一時ファイル経由保存、バックアップ、破損保護
 - backup復旧後も正常backupを失わない保存処理
 - 429 / timeout / 一時ネットワークエラー / 5xxの再試行
+- 長い`Retry-After`は同一操作内で待ち続けず、後続操作へロックを返す
+- HTTP redirectは自動追跡せず、各`Location`を検証してから次のGETを送信
+- HTTPレスポンス本文にサイズ上限を設け、異常に大きい応答を拒否
 - 予期しない4xxを無駄に再試行しない処理
 - 不確定な解析結果や作品ID不一致時のfail-closed動作
 - GitHub ActionsによるCoreテスト、Windows Plugin build、payload境界検証
@@ -97,22 +102,22 @@ v1.2.0の変更点と検証内容は [docs/RELEASE_NOTES_1.2.0.md](docs/RELEASE_
 
 `Playnite.SDK.dll`、`AngleSharp.dll`、`Newtonsoft.Json.dll`はPlaynite本体側のランタイムを利用し、プラグインへ重複同梱しません。
 
-ネットワーク通信はDLsiteの商品ページへのHTTP GETです。登録された`http://`のDLsiteリンクはHTTPSへ正規化し、最終取得先もHTTPSかつ`dlsite.com` / `*.dlsite.com`であることを要求します。外部APIキーやアクセストークンは使用しません。
+ネットワーク通信はDLsiteの商品ページへのHTTP GETです。登録された`http://`のDLsiteリンクはHTTPSへ正規化します。redirectは自動追跡せず、次のGETを送る前に各`Location`がHTTPSかつ`dlsite.com` / `*.dlsite.com`であることを検証します。外部APIキーやアクセストークンは使用しません。
 
 ## インストール
 
 ### 一般利用者向け
 
-正式公開版を使う場合は [v1.1.0 Release](https://github.com/Hoyomaru/DLsite-Update-Monitor/releases/tag/v1.1.0) のAssetsから次の`.pext`をダウンロードし、Playniteへインストールしてください。
+正式公開版を使う場合は [v1.2.0 Release](https://github.com/Hoyomaru/DLsite-Update-Monitor/releases/tag/v1.2.0) のAssetsから次の`.pext`をダウンロードし、Playniteへインストールしてください。
 
 ```text
-DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_1_0.pext
+DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_2_0.pext
 ```
 
 公開AssetのSHA-256:
 
 ```text
-9128b3ca11472b322d5307e6820b7fae902ca13d284b02645b87b9b3aace15de
+59a8456ff48036ad8d0dd47a69d2f6a9b7065959a1f94aadf49af073081cbfba
 ```
 
 同じReleaseに添付されている`SHA256SUMS.txt`も確認用に利用できます。
@@ -120,7 +125,7 @@ DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_1_0.pext
 `.pext`はソースツリーへコミットせず、GitHub Releasesで配布します。
 
 > [!NOTE]
-> `main`には今後Unreleasedの変更が入る可能性があります。安定版を利用する場合はGitHub Releaseのv1.1.0配布物を使用してください。
+> `main`には今後Unreleasedの変更が入る可能性があります。安定版を利用する場合はGitHub Releaseのv1.2.0配布物を使用してください。
 
 Release作成手順は [docs/RELEASE.md](docs/RELEASE.md) を参照してください。
 
@@ -153,7 +158,7 @@ GitHub Actionsの実機テスト候補では、Windows build jobが`DLsiteUpdate
 
 ## 更新
 
-公開v1.0.0とv1.1.0はどちらもTracking Schema `1`を使用しています。v1.0.0からv1.1.0への更新でTracking Schema migrationは発生しません。
+公開v1.0.0、v1.1.0、v1.2.0はいずれもTracking Schema `1`を使用しています。これらのVersion間の更新でTracking Schema migrationは発生しません。
 
 更新時は念のためPlayniteまたはプラグインユーザーデータをバックアップしてから、新しい検証済みパッケージへ更新してください。
 
