@@ -39,6 +39,11 @@ namespace DLsiteUpdateMonitor
 
         public DLsiteUpdateMonitorPlugin(IPlayniteAPI api) : base(api)
         {
+            Properties = new GenericPluginProperties
+            {
+                HasSettings = true
+            };
+
             Settings = new PluginSettings(this);
             repository = new TrackingRepository(GetPluginUserDataPath());
             try
@@ -110,6 +115,18 @@ namespace DLsiteUpdateMonitor
 
         public override IEnumerable<MainMenuItem> GetMainMenuItems(GetMainMenuItemsArgs args)
         {
+            yield return new MainMenuItem
+            {
+                Description = "Update Centerを開く",
+                MenuSection = "@DLsite Update Monitor",
+                Action = _ => ShowUpdateCenter()
+            };
+            yield return new MainMenuItem
+            {
+                Description = "設定を開く",
+                MenuSection = "@DLsite Update Monitor",
+                Action = _ => OpenSettingsView()
+            };
             yield return new MainMenuItem
             {
                 Description = "全ゲームを今すぐ確認",
@@ -186,6 +203,181 @@ namespace DLsiteUpdateMonitor
                 MenuSection = "DLsite Update Monitor",
                 Action = a => ResetMonitoring(a.Games)
             };
+        }
+
+        private void ShowUpdateCenter()
+        {
+            try
+            {
+                var window = PlayniteApi.Dialogs.CreateWindow(new WindowCreationOptions
+                {
+                    ShowCloseButton = true,
+                    ShowMaximizeButton = true,
+                    ShowMinimizeButton = false
+                });
+                if (window == null)
+                {
+                    throw new InvalidOperationException("Playnite did not create the Update Center window.");
+                }
+
+                window.Title = "DLsite Update Monitor — Update Center";
+                window.Width = 1100;
+                window.Height = 680;
+                window.MinWidth = 800;
+                window.MinHeight = 500;
+
+                var owner = PlayniteApi.Dialogs.GetCurrentAppWindow();
+                if (owner != null)
+                {
+                    window.Owner = owner;
+                    window.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+                }
+                else
+                {
+                    window.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+                }
+
+                window.Content = new UpdateCenterView(this);
+                window.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "Failed to open Update Center.");
+                PlayniteApi.Dialogs.ShowErrorMessage(
+                    "Update Centerを開けませんでした。詳細はPlayniteのログに記録しました。\n\n" + ex.Message,
+                    "DLsite Update Monitor");
+            }
+        }
+
+        internal List<UpdateCenterItem> GetUpdateCenterItems()
+        {
+            var rows = new List<UpdateCenterItem>();
+            foreach (var pair in tracking.Games)
+            {
+                var record = pair.Value;
+                if (record == null) continue;
+                var game = PlayniteApi.Database.Games.Get(pair.Key);
+                if (game == null) continue;
+
+                var hasPending = record.MonitoringState == MonitoringState.PendingUpdateInfo
+                    || record.MonitoringState == MonitoringState.PendingFileChange
+                    || record.MonitoringState == MonitoringState.PendingUpdateAndFileChange;
+                var needsAttention = record.LastCheckHealth != CheckHealth.Healthy
+                    && record.LastCheckHealth != CheckHealth.NeverChecked;
+
+                rows.Add(new UpdateCenterItem
+                {
+                    GameId = game.Id,
+                    GameName = game.Name ?? "(名称なし)",
+                    ProductId = record.RequestedProductId ?? record.ResolvedProductId ?? "未確定",
+                    StateText = FormatUpdateCenterState(record.MonitoringState),
+                    HealthText = FormatUpdateCenterHealth(record.LastCheckHealth),
+                    LastCheckedText = FormatShortTimestamp(record.LastSuccessfulCheckAtUtc),
+                    ChangeSummary = FormatChangeSummary(record.MonitoringState),
+                    FilterBucket = record.MonitoringState == MonitoringState.Clean
+                        ? "Clean"
+                        : record.MonitoringState == MonitoringState.Uninitialized ? "Uninitialized" : "Pending",
+                    HasPendingChange = hasPending,
+                    NeedsAttention = needsAttention
+                });
+            }
+
+            return rows
+                .OrderByDescending(x => x.HasPendingChange)
+                .ThenByDescending(x => x.NeedsAttention)
+                .ThenBy(x => x.GameName, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+        }
+
+        internal void CheckGamesFromUpdateCenter(List<Guid> gameIds)
+        {
+            var games = ResolveGames(gameIds);
+            if (games.Count > 0) CheckGames(games, true);
+        }
+
+        internal void AcknowledgeFromUpdateCenter(List<Guid> gameIds, bool ignored)
+        {
+            var games = ResolveGames(gameIds);
+            if (games.Count == 0) return;
+
+            if (games.Count > 1)
+            {
+                var action = ignored ? "無視済み" : "適用済み";
+                var answer = PlayniteApi.Dialogs.ShowMessage(
+                    $"{games.Count}件を{action}にします。選択したゲームの現在状態をまとめて確定します。続行しますか？",
+                    "DLsite Update Monitor",
+                    MessageBoxButton.YesNo);
+                if (answer != MessageBoxResult.Yes) return;
+            }
+
+            Acknowledge(games, ignored);
+        }
+
+        internal void ShowTrackingDetailsFromUpdateCenter(Guid gameId)
+        {
+            var game = PlayniteApi.Database.Games.Get(gameId);
+            if (game != null) ShowTrackingDetails(new List<Game> { game });
+        }
+
+        internal void OpenDlsitePageFromUpdateCenter(Guid gameId)
+        {
+            var game = PlayniteApi.Database.Games.Get(gameId);
+            if (game != null) OpenDlsitePage(new List<Game> { game });
+        }
+
+        internal void ShowInfo(string message)
+        {
+            PlayniteApi.Dialogs.ShowMessage(message, "DLsite Update Monitor");
+        }
+
+        private List<Game> ResolveGames(IEnumerable<Guid> gameIds)
+        {
+            if (gameIds == null) return new List<Game>();
+            return gameIds
+                .Distinct()
+                .Select(id => PlayniteApi.Database.Games.Get(id))
+                .Where(game => game != null)
+                .ToList();
+        }
+
+        private static string FormatUpdateCenterState(MonitoringState state)
+        {
+            switch (state)
+            {
+                case MonitoringState.PendingUpdateInfo:
+                case MonitoringState.PendingFileChange:
+                case MonitoringState.PendingUpdateAndFileChange:
+                    return "● " + FormatMonitoringState(state);
+                case MonitoringState.Clean:
+                    return "✓ " + FormatMonitoringState(state);
+                default:
+                    return "○ " + FormatMonitoringState(state);
+            }
+        }
+
+        private static string FormatUpdateCenterHealth(CheckHealth health)
+        {
+            if (health == CheckHealth.Healthy) return "✓ " + FormatCheckHealth(health);
+            if (health == CheckHealth.NeverChecked) return "○ " + FormatCheckHealth(health);
+            return "⚠ " + FormatCheckHealth(health);
+        }
+
+        private static string FormatChangeSummary(MonitoringState state)
+        {
+            switch (state)
+            {
+                case MonitoringState.PendingUpdateInfo: return "更新情報";
+                case MonitoringState.PendingFileChange: return "配布物";
+                case MonitoringState.PendingUpdateAndFileChange: return "更新情報 + 配布物";
+                case MonitoringState.Clean: return "変更なし";
+                case MonitoringState.Uninitialized: return "監視開始前";
+                default: return "—";
+            }
+        }
+
+        private static string FormatShortTimestamp(DateTimeOffset? value)
+        {
+            return value.HasValue ? value.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "なし";
         }
 
         private void BuildRuntimeServices()

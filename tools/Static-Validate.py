@@ -108,6 +108,49 @@ for name,version,src in required:
     if not re.search(rf'Include="{re.escape(name)}"\s+Version="{re.escape(version)}"',src):
         errors.append(f'Expected dependency not pinned: {name} {version}')
 
+# Update Center UX contract: keep the audited selection/filter behavior explicit.
+update_center_xaml = ROOT/'src/DLsiteUpdateMonitor.Plugin/UpdateCenterView.xaml'
+update_center_code = ROOT/'src/DLsiteUpdateMonitor.Plugin/UpdateCenterView.xaml.cs'
+if update_center_xaml.exists() and update_center_code.exists():
+    ux = update_center_xaml.read_text(encoding='utf-8-sig')
+    uc = update_center_code.read_text(encoding='utf-8-sig')
+    for needle, msg in [
+        ('Text="ゲーム名・作品IDを検索"', 'Update Center search needs a visible label'),
+        ('Text="表示:"', 'Update Center filter needs a visible label'),
+        ('Content="表示を更新"', 'Update Center refresh wording must distinguish local refresh from network recheck'),
+        ('Foreground="{DynamicResource TextBrush}"', 'Update Center must inherit Playnite theme text color'),
+        ('x:Name="SelectionText"', 'Update Center must show selection count'),
+        ('SelectionChanged="ItemsGrid_SelectionChanged"', 'Update Center must react to selection changes'),
+        ('Content="エラー・要確認を再チェック"', 'Update Center attention action wording mismatch'),
+        ('Header="変更状態"', 'Update Center state column wording mismatch'),
+        ('Header="チェック結果"', 'Update Center health column wording mismatch'),
+    ]:
+        if needle not in ux: errors.append(msg)
+    for needle, msg in [
+        ('DetailsButton.IsEnabled = single', 'Update Center details must require a single selection'),
+        ('OpenPageButton.IsEnabled = single', 'Update Center DLsite open must require a single selection'),
+        ('AppliedButton.IsEnabled = hasSelection', 'Update Center acknowledge action must require selection'),
+        ('IgnoreButton.IsEnabled = hasSelection', 'Update Center ignore action must require selection'),
+    ]:
+        if needle not in uc: errors.append(msg)
+
+    plugin_assign = uc.find('this.plugin = plugin ?? throw new ArgumentNullException(nameof(plugin));')
+    init_component = uc.find('InitializeComponent();')
+    if plugin_assign < 0 or init_component < 0 or plugin_assign > init_component:
+        errors.append('Update Center must assign plugin dependency before InitializeComponent can raise XAML events')
+
+# Plugin settings discoverability contract.
+plugin_cs_path = ROOT/'src/DLsiteUpdateMonitor.Plugin/DLsiteUpdateMonitorPlugin.cs'
+if plugin_cs_path.exists():
+    pc_settings = plugin_cs_path.read_text(encoding='utf-8-sig')
+    for needle, msg in [
+        ('Properties = new GenericPluginProperties', 'Plugin must initialize GenericPluginProperties'),
+        ('HasSettings = true', 'Plugin must advertise settings to Playnite'),
+        ('Description = "設定を開く"', 'Plugin must expose a direct settings menu entry'),
+        ('Action = _ => OpenSettingsView()', 'Direct settings menu must open the Playnite plugin settings view'),
+    ]:
+        if needle not in pc_settings: errors.append(msg)
+
 # net462 Core uses HttpClient directly, so the framework reference must be explicit.
 if not re.search(r'<Reference\s+Include="System\.Net\.Http"\s*/>', core):
     errors.append('net462 Core is missing explicit System.Net.Http framework reference')

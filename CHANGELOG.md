@@ -12,6 +12,9 @@
 
 ### Added
 
+- 追跡済みゲームを一覧で確認できる **Update Center** を追加
+- Update Centerへゲーム名/作品ID検索、未処理・エラー/要確認・変更なし・未初期化フィルタを追加
+- Update Centerから複数選択の適用済み/無視、選択再確認、エラー一括再確認、詳細表示、DLsiteページ表示を実行可能にした
 - プロジェクトへMIT Licenseを付与し、ルートに`LICENSE`を追加
 
 ### Changed
