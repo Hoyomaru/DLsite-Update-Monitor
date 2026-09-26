@@ -110,7 +110,9 @@ namespace DLsiteUpdateMonitor
         {
             if (operationLock.CurrentCount == 0)
             {
-                // A running check keeps the old immutable runtime options until it finishes.
+                // A running check keeps the old immutable HTTP/runtime options until it finishes,
+                // but scheduler enable/disable should still take effect immediately.
+                ConfigureAutomaticCheckTimer(TimeSpan.FromSeconds(10));
                 return;
             }
             BuildRuntimeServices();
@@ -606,7 +608,15 @@ namespace DLsiteUpdateMonitor
                 }
 
                 var game = PlayniteApi.Database.Games.Get(pair.Key);
-                if (game != null) games.Add(game);
+                if (game == null) continue;
+
+                // A removed DLsite link should not make an old tracking record wake the scheduler every
+                // 15 minutes. Invalid/ambiguous DLsite links are still included so the normal batch path
+                // can record a LinkError and advance LastAttemptAtUtc.
+                var resolution = linkResolver.Resolve(game.Links?.Select(l => l.Url));
+                if (resolution.Status == LinkResolutionStatus.NoDlsiteLink) continue;
+
+                games.Add(game);
             }
 
             return games;
