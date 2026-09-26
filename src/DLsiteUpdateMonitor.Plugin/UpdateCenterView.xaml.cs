@@ -31,6 +31,7 @@ namespace DLsiteUpdateMonitor
             view = CollectionViewSource.GetDefaultView(ItemsGrid.ItemsSource);
             if (view != null) view.Filter = FilterItem;
             RefreshSummary();
+            RefreshSelectionState();
         }
 
         private bool FilterItem(object value)
@@ -67,6 +68,24 @@ namespace DLsiteUpdateMonitor
             if (view != null) VisibleCountText.Text = $"表示 {view.Cast<object>().Count()}件";
         }
 
+        private void RefreshSelectionState()
+        {
+            var count = ItemsGrid?.SelectedItems?.Count ?? 0;
+            if (SelectionText != null)
+            {
+                SelectionText.Text = count == 0 ? "選択なし" : $"{count}件選択中";
+            }
+
+            var hasSelection = count > 0;
+            if (CheckSelectedButton != null) CheckSelectedButton.IsEnabled = hasSelection;
+            if (AppliedButton != null) AppliedButton.IsEnabled = hasSelection;
+            if (IgnoreButton != null) IgnoreButton.IsEnabled = hasSelection;
+
+            var single = count == 1;
+            if (DetailsButton != null) DetailsButton.IsEnabled = single;
+            if (OpenPageButton != null) OpenPageButton.IsEnabled = single;
+        }
+
         private List<Guid> SelectedGameIds()
         {
             return ItemsGrid.SelectedItems.Cast<UpdateCenterItem>().Select(x => x.GameId).Distinct().ToList();
@@ -93,6 +112,12 @@ namespace DLsiteUpdateMonitor
         {
             view?.Refresh();
             RefreshSummary();
+            RefreshSelectionState();
+        }
+
+        private void ItemsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            RefreshSelectionState();
         }
 
         private void RefreshButton_Click(object sender, RoutedEventArgs e) => RefreshRows();
