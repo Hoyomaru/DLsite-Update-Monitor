@@ -22,6 +22,7 @@ namespace DLsiteUpdateMonitor.Core.Services
             if (candidate == null) throw new ArgumentNullException(nameof(candidate));
 
             record.LastAttemptAtUtc = nowUtc;
+            record.RetryNotBeforeUtc = null;
             record.LastObservation = SnapshotCloner.Clone(candidate);
 
             var result = comparer.Compare(record.AcknowledgedSnapshot, candidate);
