@@ -42,6 +42,8 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="180"/>
                 <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="8"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <ComboBox x:Name="FilterComboBox" Grid.Column="0" SelectionChanged="FilterChanged">
@@ -49,10 +51,11 @@
                 <ComboBoxItem Content="更新あり" Tag="Update"/>
                 <ComboBoxItem Content="配布物変更" Tag="File"/>
                 <ComboBoxItem Content="エラー / 要確認" Tag="Error"/>
-                <ComboBoxItem Content="変更なし" Tag="Clean"/>
+                <ComboBoxItem Content="対応不要" Tag="Clean"/>
                 <ComboBoxItem Content="すべて" Tag="All"/>
             </ComboBox>
-            <TextBox x:Name="SearchTextBox" Grid.Column="2" TextChanged="SearchChanged"
+            <TextBlock Grid.Column="2" Text="検索" VerticalAlignment="Center"/>
+            <TextBox x:Name="SearchTextBox" Grid.Column="4" TextChanged="SearchChanged"
                      ToolTip="ゲーム名・作品ID・状態で検索"/>
         </Grid>
 
@@ -81,10 +84,9 @@
                 </DataGrid.Columns>
             </DataGrid>
 
-            <Border Grid.Column="2" BorderThickness="1" Padding="12">
+            <GroupBox Grid.Column="2" Header="選択中の作品" Padding="10">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel>
-                        <TextBlock Text="選択中の作品" FontSize="15" FontWeight="Bold" Margin="0,0,0,10"/>
                         <TextBlock x:Name="DetailEmptyText" Text="左の一覧からゲームを選択してください。" TextWrapping="Wrap" Opacity="0.7"/>
 
                         <StackPanel x:Name="DetailPanel" Visibility="Collapsed">
@@ -113,7 +115,7 @@
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
-            </Border>
+            </GroupBox>
         </Grid>
 
         <Grid Grid.Row="3" Margin="0,12,0,0">
