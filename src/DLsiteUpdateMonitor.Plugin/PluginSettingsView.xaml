@@ -34,7 +34,22 @@
         </Grid>
 
         <CheckBox Content="更新状態をPlayniteタグへ反映" IsChecked="{Binding EnableTags}" Margin="0,12,0,0"/>
-        <TextBlock Text="現在のバージョンでは自動チェックを行いません。チェックはメニューから手動実行します。"
-                   TextWrapping="Wrap" Foreground="Gray" Margin="0,12,0,0"/>
+
+        <Separator Margin="0,16,0,12"/>
+
+        <TextBlock Text="自動チェック" FontWeight="Bold" Margin="0,0,0,8"/>
+        <CheckBox Content="追跡中のゲームを自動チェックする"
+                  IsChecked="{Binding EnableAutomaticChecks}"
+                  Margin="0,0,0,8"/>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="230"/>
+                <ColumnDefinition Width="100"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="チェック間隔（時間）" Margin="0,4"/>
+            <TextBox Grid.Column="1" Text="{Binding AutomaticCheckIntervalHours}" Margin="0,2"/>
+        </Grid>
+        <TextBlock Text="既に追跡中のゲームだけが対象です。各ゲームの最終試行から設定時間を超えた場合に確認します。Playnite起動直後は約2分待ってから判定し、実行中の手動操作がある場合は次回へ延期します。"
+                   TextWrapping="Wrap" Foreground="Gray" Margin="0,8,0,0"/>
     </StackPanel>
 </UserControl>
