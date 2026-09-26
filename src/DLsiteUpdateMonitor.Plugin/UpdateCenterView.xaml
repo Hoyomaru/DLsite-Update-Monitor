@@ -19,39 +19,54 @@
                 <TextBlock Text="Update Center" FontSize="20" FontWeight="Bold"/>
                 <TextBlock x:Name="SummaryText" Margin="0,4,0,0" TextWrapping="Wrap" Opacity="0.75"/>
             </StackPanel>
-            <Button Grid.Column="1" x:Name="RefreshButton" Content="一覧を更新" MinWidth="100"
+            <Button Grid.Column="1" x:Name="RefreshButton" Content="表示を更新" MinWidth="100"
                     Margin="12,0,0,0" Padding="12,7" VerticalAlignment="Top" Click="RefreshButton_Click"/>
         </Grid>
 
         <Grid Grid.Row="1" Margin="0,0,0,10">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="220"/>
-                <ColumnDefinition Width="180"/>
+                <ColumnDefinition Width="260"/>
+                <ColumnDefinition Width="200"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-            <TextBox x:Name="SearchBox" Grid.Column="0" Margin="0,0,8,0" Padding="8,6"
-                     ToolTip="ゲーム名・作品IDを検索" TextChanged="Filter_Changed"/>
-            <ComboBox x:Name="FilterCombo" Grid.Column="1" Margin="0,0,8,0" Padding="6"
-                      SelectionChanged="Filter_Changed">
-                <ComboBoxItem Content="すべて" Tag="All" IsSelected="True"/>
-                <ComboBoxItem Content="未処理の変更" Tag="Pending"/>
-                <ComboBoxItem Content="エラー・要確認" Tag="Attention"/>
-                <ComboBoxItem Content="変更なし" Tag="Clean"/>
-                <ComboBoxItem Content="未初期化" Tag="Uninitialized"/>
-            </ComboBox>
-            <TextBlock Grid.Column="2" x:Name="VisibleCountText" VerticalAlignment="Center"
-                       HorizontalAlignment="Right" Opacity="0.7"/>
+            <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                <TextBlock Text="ゲーム名・作品IDを検索" Margin="0,0,0,4" FontSize="11" Opacity="0.75"/>
+                <TextBox x:Name="SearchBox" Padding="8,6"
+                         ToolTip="ゲーム名・作品IDを検索" TextChanged="Filter_Changed"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Margin="0,0,10,0">
+                <TextBlock Text="表示:" Margin="0,0,0,4" FontSize="11" Opacity="0.75"/>
+                <ComboBox x:Name="FilterCombo" Padding="6" SelectionChanged="Filter_Changed">
+                    <ComboBoxItem Content="すべて" Tag="All" IsSelected="True"/>
+                    <ComboBoxItem Content="未処理の変更" Tag="Pending"/>
+                    <ComboBoxItem Content="エラー・要確認" Tag="Attention"/>
+                    <ComboBoxItem Content="変更なし" Tag="Clean"/>
+                    <ComboBoxItem Content="未初期化" Tag="Uninitialized"/>
+                </ComboBox>
+            </StackPanel>
+            <StackPanel Grid.Column="2" VerticalAlignment="Bottom" HorizontalAlignment="Right">
+                <TextBlock x:Name="VisibleCountText" HorizontalAlignment="Right" Opacity="0.7"/>
+                <TextBlock x:Name="SelectionText" Margin="0,3,0,0" HorizontalAlignment="Right" FontWeight="SemiBold"/>
+            </StackPanel>
         </Grid>
 
         <DataGrid x:Name="ItemsGrid" Grid.Row="2" AutoGenerateColumns="False" IsReadOnly="True"
                   SelectionMode="Extended" SelectionUnit="FullRow" CanUserAddRows="False"
                   CanUserDeleteRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                  SelectionChanged="ItemsGrid_SelectionChanged"
                   MouseDoubleClick="ItemsGrid_MouseDoubleClick">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="ゲーム" Binding="{Binding GameName}" Width="2.1*"/>
-                <DataGridTextColumn Header="状態" Binding="{Binding StateText}" Width="1.25*"/>
+                <DataGridTextColumn Header="ゲーム" Binding="{Binding GameName}" Width="2.1*">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                            <Setter Property="ToolTip" Value="{Binding GameName}"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="変更状態" Binding="{Binding StateText}" Width="1.25*"/>
                 <DataGridTextColumn Header="変更内容" Binding="{Binding ChangeSummary}" Width="1.65*"/>
-                <DataGridTextColumn Header="確認状態" Binding="{Binding HealthText}" Width="1.2*"/>
+                <DataGridTextColumn Header="チェック結果" Binding="{Binding HealthText}" Width="1.2*"/>
                 <DataGridTextColumn Header="作品ID" Binding="{Binding ProductId}" Width="1.0*"/>
                 <DataGridTextColumn Header="最終成功" Binding="{Binding LastCheckedText}" Width="1.25*"/>
             </DataGrid.Columns>
@@ -63,14 +78,19 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <WrapPanel>
-                <Button x:Name="CheckSelectedButton" Content="選択を再確認" Margin="0,0,8,8" Padding="12,7" Click="CheckSelectedButton_Click"/>
-                <Button x:Name="RecheckAttentionButton" Content="エラーを再確認" Margin="0,0,8,8" Padding="12,7" Click="RecheckAttentionButton_Click"/>
-                <Button x:Name="AppliedButton" Content="適用済みにする" Margin="0,0,8,8" Padding="12,7" Click="AppliedButton_Click"/>
-                <Button x:Name="IgnoreButton" Content="無視する" Margin="0,0,8,8" Padding="12,7" Click="IgnoreButton_Click"/>
+                <Button x:Name="CheckSelectedButton" Content="選択を再確認" Margin="0,0,8,8" Padding="12,7"
+                        ToolTipService.ShowOnDisabled="True" ToolTip="1件以上選択すると実行できます。" Click="CheckSelectedButton_Click"/>
+                <Button x:Name="RecheckAttentionButton" Content="エラー・要確認を再チェック" Margin="0,0,8,8" Padding="12,7" Click="RecheckAttentionButton_Click"/>
+                <Button x:Name="AppliedButton" Content="適用済みにする" Margin="0,0,8,8" Padding="12,7"
+                        ToolTipService.ShowOnDisabled="True" ToolTip="1件以上選択すると実行できます。" Click="AppliedButton_Click"/>
+                <Button x:Name="IgnoreButton" Content="無視する" Margin="0,0,8,8" Padding="12,7"
+                        ToolTipService.ShowOnDisabled="True" ToolTip="1件以上選択すると実行できます。" Click="IgnoreButton_Click"/>
             </WrapPanel>
             <WrapPanel Grid.Column="1" HorizontalAlignment="Right">
-                <Button x:Name="DetailsButton" Content="詳細" Margin="0,0,8,8" Padding="12,7" Click="DetailsButton_Click"/>
-                <Button x:Name="OpenPageButton" Content="DLsiteを開く" Margin="0,0,0,8" Padding="12,7" Click="OpenPageButton_Click"/>
+                <Button x:Name="DetailsButton" Content="詳細" Margin="0,0,8,8" Padding="12,7"
+                        ToolTipService.ShowOnDisabled="True" ToolTip="1ゲームだけ選択すると実行できます。" Click="DetailsButton_Click"/>
+                <Button x:Name="OpenPageButton" Content="DLsiteを開く" Margin="0,0,0,8" Padding="12,7"
+                        ToolTipService.ShowOnDisabled="True" ToolTip="1ゲームだけ選択すると実行できます。" Click="OpenPageButton_Click"/>
             </WrapPanel>
         </Grid>
     </Grid>
