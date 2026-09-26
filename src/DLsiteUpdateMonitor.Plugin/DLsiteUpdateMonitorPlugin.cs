@@ -210,14 +210,14 @@ namespace DLsiteUpdateMonitor
             oldClient?.Dispose();
         }
 
-        private void CheckGames(List<Game> games, bool forceRefresh, bool openUpdateCenterAfter = false, bool showSummary = true)
+        private bool CheckGames(List<Game> games, bool forceRefresh, bool openUpdateCenterAfter = false, bool showSummary = true)
         {
-            if (games == null || games.Count == 0) return;
-            if (!EnsurePersistenceWritable()) return;
+            if (games == null || games.Count == 0) return false;
+            if (!EnsurePersistenceWritable()) return false;
             if (!operationLock.Wait(0))
             {
                 PlayniteApi.Dialogs.ShowMessage("別のDLsite更新チェックを実行中です。", "DLsite Update Monitor");
-                return;
+                return false;
             }
 
             var results = new List<GameRunResult>();
@@ -323,7 +323,7 @@ namespace DLsiteUpdateMonitor
                         "更新チェック中にエラーが発生しました。最後に正常保存できた追跡状態を維持し、タグ反映を中止しました。\n\n"
                         + progressResult.Error.Message,
                         "DLsite Update Monitor");
-                    return;
+                    return false;
                 }
 
                 ApplyTags(results.Select(r => r.GameId).Distinct().ToList());
@@ -335,6 +335,7 @@ namespace DLsiteUpdateMonitor
                 {
                     ShowSummary(results, progressResult.Canceled);
                 }
+                return true;
             }
             finally
             {
@@ -555,8 +556,10 @@ namespace DLsiteUpdateMonitor
                 switch (args.Action)
                 {
                     case UpdateCenterAction.Recheck:
-                        CheckGames(games, true, false, false);
-                        view.SetStatusMessage(games.Count + "件を再確認しました。");
+                        if (CheckGames(games, true, false, false))
+                        {
+                            view.SetStatusMessage(games.Count + "件を再確認しました。");
+                        }
                         break;
                     case UpdateCenterAction.MarkApplied:
                         var applied = Acknowledge(games, false, false);
