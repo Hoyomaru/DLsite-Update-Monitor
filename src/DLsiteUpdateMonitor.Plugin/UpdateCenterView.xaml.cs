@@ -35,10 +35,7 @@ namespace DLsiteUpdateMonitor
 
         public void SetItems(IEnumerable<UpdateCenterItem> updatedItems)
         {
-            var selectedIds = new HashSet<Guid>(ItemsGrid.SelectedItems
-                .OfType<UpdateCenterItem>()
-                .Select(item => item.GameId));
-
+            ItemsGrid.SelectedItems.Clear();
             items.Clear();
             foreach (var item in updatedItems ?? Enumerable.Empty<UpdateCenterItem>())
             {
@@ -47,12 +44,6 @@ namespace DLsiteUpdateMonitor
 
             collectionView.Refresh();
             UpdateSummary();
-
-            foreach (var item in items.Where(item => selectedIds.Contains(item.GameId)))
-            {
-                ItemsGrid.SelectedItems.Add(item);
-            }
-
             RefreshSelectionState();
         }
 
