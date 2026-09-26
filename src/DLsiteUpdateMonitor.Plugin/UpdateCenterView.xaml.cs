@@ -64,7 +64,7 @@ namespace DLsiteUpdateMonitor
             var pending = items.Count(x => x.HasPendingChange);
             var attention = items.Count(x => x.NeedsAttention);
             var clean = items.Count(x => x.FilterBucket == "Clean");
-            SummaryText.Text = $"追跡中 {items.Count}件 · 未処理 {pending}件 · エラー/要確認 {attention}件 · 変更なし {clean}件";
+            SummaryText.Text = $"追跡中 {items.Count}件 · 未処理 {pending}件 · エラー/要確認 {attention}件 · 変更なし {clean}件\n{plugin.GetAutomaticCheckSummary()}";
             if (view != null) VisibleCountText.Text = $"表示 {view.Cast<object>().Count()}件";
         }
 
