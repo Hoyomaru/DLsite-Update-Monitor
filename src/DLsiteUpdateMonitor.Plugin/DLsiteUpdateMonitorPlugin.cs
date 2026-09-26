@@ -210,7 +210,7 @@ namespace DLsiteUpdateMonitor
             oldClient?.Dispose();
         }
 
-        private void CheckGames(List<Game> games, bool forceRefresh, bool openUpdateCenterAfter = false)
+        private void CheckGames(List<Game> games, bool forceRefresh, bool openUpdateCenterAfter = false, bool showSummary = true)
         {
             if (games == null || games.Count == 0) return;
             if (!EnsurePersistenceWritable()) return;
@@ -331,7 +331,7 @@ namespace DLsiteUpdateMonitor
                 {
                     ShowUpdateCenter(BuildSummaryText(results, progressResult.Canceled));
                 }
-                else
+                else if (showSummary)
                 {
                     ShowSummary(results, progressResult.Canceled);
                 }
@@ -737,11 +737,11 @@ namespace DLsiteUpdateMonitor
             }
         }
 
-        private void Acknowledge(List<Game> games, bool ignored)
+        private int Acknowledge(List<Game> games, bool ignored, bool showResult = true)
         {
-            if (games == null || games.Count == 0) return;
-            if (!EnsurePersistenceWritable()) return;
-            if (!TryEnterMutationOperation()) return;
+            if (games == null || games.Count == 0) return 0;
+            if (!EnsurePersistenceWritable()) return -1;
+            if (!TryEnterMutationOperation()) return -1;
             try
             {
                 var working = TrackingDatabaseCloner.Clone(tracking);
@@ -755,12 +755,17 @@ namespace DLsiteUpdateMonitor
                 repository.Save(working, DateTimeOffset.UtcNow);
                 tracking = working;
                 ApplyTags(changed);
-                PlayniteApi.Dialogs.ShowMessage($"{changed.Count}件を{(ignored ? "無視済み" : "適用済み")}にしました。", "DLsite Update Monitor");
+                if (showResult)
+                {
+                    PlayniteApi.Dialogs.ShowMessage($"{changed.Count}件を{(ignored ? "無視済み" : "適用済み")}にしました。", "DLsite Update Monitor");
+                }
+                return changed.Count;
             }
             catch (Exception ex)
             {
                 Logger.Error(ex, "Failed to acknowledge DLsite tracking state.");
                 PlayniteApi.Dialogs.ShowErrorMessage("追跡状態を保存できませんでした。変更は確定していません。\n\n" + ex.Message, "DLsite Update Monitor");
+                return -1;
             }
             finally
             {
