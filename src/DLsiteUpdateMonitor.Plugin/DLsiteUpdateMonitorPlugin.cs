@@ -24,6 +24,7 @@ namespace DLsiteUpdateMonitor
         private static readonly ILogger Logger = LogManager.GetLogger();
         private readonly SemaphoreSlim operationLock = new SemaphoreSlim(1, 1);
         private readonly DlsiteLinkResolver linkResolver = new DlsiteLinkResolver();
+        private readonly SnapshotDiffer snapshotDiffer = new SnapshotDiffer();
         private readonly TrackingRepository repository;
         private TrackingDatabase tracking;
         private string startupWarning;
@@ -78,6 +79,9 @@ namespace DLsiteUpdateMonitor
                 PlayniteApi.Dialogs.ShowMessage(startupWarning, "DLsite Update Monitor");
                 startupWarning = null;
             }
+            // Reconcile plugin-owned tags with the durable tracking state on startup. A previous
+            // Playnite tag write may have failed after tracking.json was already committed.
+            TryApplyTags(tracking.Games.Keys.ToList(), false);
             ConfigureAutomaticCheckTimer(TimeSpan.FromMinutes(2));
         }
 
@@ -122,7 +126,7 @@ namespace DLsiteUpdateMonitor
             }
             BuildRuntimeServices();
             // Reconcile existing plugin-owned tags immediately when the user toggles tag integration.
-            ApplyTags(tracking.Games.Keys.ToList());
+            TryApplyTags(tracking.Games.Keys.ToList(), false);
             ConfigureAutomaticCheckTimer(TimeSpan.FromSeconds(10));
         }
 
@@ -169,6 +173,12 @@ namespace DLsiteUpdateMonitor
                 Description = "孤立した追跡データを整理",
                 MenuSection = "@DLsite Update Monitor",
                 Action = _ => CleanupOrphanedTracking()
+            };
+            yield return new MainMenuItem
+            {
+                Description = "タグを再同期",
+                MenuSection = "@DLsite Update Monitor",
+                Action = _ => ResyncTags()
             };
             yield return new MainMenuItem
             {
@@ -348,6 +358,64 @@ namespace DLsiteUpdateMonitor
             return Settings.EnableAutomaticChecks
                 ? $"自動チェック: ON / {Settings.AutomaticCheckIntervalHours}時間ごと（追跡中のみ）"
                 : "自動チェック: OFF";
+        }
+
+        internal UpdateCenterDiff GetUpdateCenterDiff(Guid gameId)
+        {
+            GameTrackingRecord record;
+            if (!tracking.Games.TryGetValue(gameId, out record) || record == null)
+            {
+                return new UpdateCenterDiff
+                {
+                    Available = false,
+                    Summary = "監視データがありません。",
+                    BeforeUpdateInfo = "不明",
+                    AfterUpdateInfo = "不明",
+                    BeforeFileSize = "不明",
+                    AfterFileSize = "不明"
+                };
+            }
+
+            var diff = snapshotDiffer.Diff(record.AcknowledgedSnapshot, record.CurrentSnapshot);
+            var beforeUpdate = diff.UpdateInfo?.Before;
+            var afterUpdate = diff.UpdateInfo?.After;
+            var beforeSize = diff.FileSize?.Before;
+            var afterSize = diff.FileSize?.After;
+
+            string summary;
+            if (!diff.Available)
+            {
+                summary = record.AcknowledgedSnapshot == null || record.CurrentSnapshot == null
+                    ? "確認済み基準と現在値が揃うと差分を表示できます。"
+                    : "作品IDが一致しないため差分比較を行いません。";
+            }
+            else
+            {
+                var updateState = diff.UpdateInfo.Comparable
+                    ? (diff.UpdateInfo.Changed ? "更新情報: 変更あり" : "更新情報: 変更なし")
+                    : "更新情報: 比較不能";
+                var sizeState = diff.FileSize.Comparable
+                    ? (diff.FileSize.Changed ? "容量: 変更あり" : "容量: 変更なし")
+                    : "容量: 比較不能";
+                summary = updateState + " / " + sizeState;
+            }
+
+            return new UpdateCenterDiff
+            {
+                Available = diff.Available,
+                Summary = summary,
+                BeforeUpdateInfo = FormatUpdateInfo(beforeUpdate),
+                AfterUpdateInfo = FormatUpdateInfo(afterUpdate),
+                BeforeFileSize = FormatFileSize(beforeSize),
+                AfterFileSize = FormatFileSize(afterSize),
+                UpdateInfoChanged = diff.UpdateInfo != null && diff.UpdateInfo.Comparable && diff.UpdateInfo.Changed,
+                FileSizeChanged = diff.FileSize != null && diff.FileSize.Comparable && diff.FileSize.Changed
+            };
+        }
+
+        internal void ResyncTagsFromUpdateCenter()
+        {
+            ResyncTags();
         }
 
         private List<Game> ResolveGames(IEnumerable<Guid> gameIds)
