@@ -623,7 +623,7 @@ namespace DLsiteUpdateMonitor
                     ProductId = record.RequestedProductId ?? record.ResolvedProductId ?? "未確定",
                     ChangeText = FormatUpdateCenterChange(state),
                     HealthText = FormatCheckHealth(health),
-                    LastCheckText = FormatTimestamp(record.LastAttemptAtUtc),
+                    LastCheckText = FormatUpdateCenterTimestamp(record.LastAttemptAtUtc),
                     UpdateInfoText = snapshot == null ? "なし" : FormatUpdateInfo(snapshot.UpdateInfo),
                     FileSizeText = snapshot == null ? "なし" : FormatFileSize(snapshot.FileSize),
                     ErrorText = errorText,
@@ -645,6 +645,11 @@ namespace DLsiteUpdateMonitor
         {
             var ids = new HashSet<Guid>(gameIds ?? Enumerable.Empty<Guid>());
             return PlayniteApi.Database.Games.Where(game => ids.Contains(game.Id)).ToList();
+        }
+
+        private static string FormatUpdateCenterTimestamp(DateTimeOffset? value)
+        {
+            return value.HasValue ? value.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "なし";
         }
 
         private static string FormatUpdateCenterChange(MonitoringState state)
