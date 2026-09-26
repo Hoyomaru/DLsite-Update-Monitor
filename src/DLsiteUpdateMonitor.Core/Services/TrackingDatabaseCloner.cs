@@ -50,6 +50,7 @@ namespace DLsiteUpdateMonitor.Core.Services
                 FirstCheckedAtUtc = source.FirstCheckedAtUtc,
                 LastAttemptAtUtc = source.LastAttemptAtUtc,
                 LastSuccessfulCheckAtUtc = source.LastSuccessfulCheckAtUtc,
+                RetryNotBeforeUtc = source.RetryNotBeforeUtc,
                 LastError = CloneError(source.LastError),
                 History = CloneHistory(source.History)
             };
