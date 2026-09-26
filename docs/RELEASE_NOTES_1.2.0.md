@@ -1,6 +1,6 @@
 # DLsite Update Monitor v1.2.0
 
-2026-09-27 Release Candidate
+2026-09-27
 
 v1.1.0のfail-closed / copy-on-write / tag ownership / Tracking Schema 1を維持しながら、日常の確認作業をUpdate Centerへ集約し、既定OFFのautomatic checkを追加するbackward-compatible feature releaseです。
 
@@ -38,8 +38,21 @@ v1.1.0のfail-closed / copy-on-write / tag ownership / Tracking Schema 1を維�
 - 2026-09-27 Playnite 10.56: Update Center起動・rows描画・dark theme PASS
 - 2026-09-27: Settings discoverability / direct settings menu / automatic check ON/OFF / Gate H runtime PASS
 
-## Release gate remaining
+## Final release validation
 
-Version 1.2.0 metadataを含む最終CI Artifactを同一payloadのままpackageし、生成した `.pext` 自体をPlayniteへinstallして最終確認した後に公開します。
+- Core tests / Static validation: PASS
+- Windows net462 Plugin build / payload boundary: PASS
+- Official Playnite 10.56 Toolboxで exact release package生成: PASS
+- 最終package install / Plugin load / Version 1.2.0: PASS
+- 設定を開く / Update Center / existing tracking引き継ぎ / representative manual check: PASS
+
+公開package:
+
+```text
+DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_2_0.pext
+SHA-256: 59a8456ff48036ad8d0dd47a69d2f6a9b7065959a1f94aadf49af073081cbfba
+```
+
+このReleaseは実機確認した同一Artifactを再buildせず、そのまま公開します。
 
 License: MIT

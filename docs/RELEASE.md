@@ -34,10 +34,10 @@ Artifact: DLsiteUpdateMonitor-v1.2.0-release-candidate-789e5fe069913554c7a8682e1
 Package: DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_2_0.pext
 SHA-256: 59a8456ff48036ad8d0dd47a69d2f6a9b7065959a1f94aadf49af073081cbfba
 Toolbox: official Playnite 10.56
-Runtime install gate: PENDING
+Runtime install gate: PASS
 ```
 
-このpackageを実機確認した後、`release-candidates/v1.2.0.json` の `runtime_install_gate` を `PASS` へ更新してからpublishします。publish workflowはこのArtifactを再buildせず、そのままGitHub Releaseへ昇格します。
+2026-09-27にこのexact packageの実機install確認を完了しました。`runtime_install_gate` は `PASS`。publish workflowはこのArtifactを再buildせず、そのままGitHub Releaseへ昇格します。
 
 過去v0.1.0検証証跡: [../RELEASE_STATUS.md](../RELEASE_STATUS.md)
 

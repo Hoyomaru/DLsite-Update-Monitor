@@ -51,6 +51,7 @@
 - Core tests / Static validation / Windows net462 Plugin build / payload boundary: PASS。
 - Update CenterのNullReference修正後、Playnite 10.56実機で起動・tracked rows描画・dark theme表示を確認。
 - 2026-09-27にautomatic-check settings表示、設定menu、ON/OFF、runtime behaviorのGate Hを実機確認。
+- Version 1.2.0 exact `.pext` を公式Playnite 10.56 Toolboxで生成し、同一packageのinstall / Plugin load / settings / Update Center / tracking引き継ぎ / representative manual checkを実機確認。
 - GTM/ABDM/Linkexと同じ検証セッションでRelease対象UI/機能を実機確認。
 
 ## [1.1.0] - 2026-09-15

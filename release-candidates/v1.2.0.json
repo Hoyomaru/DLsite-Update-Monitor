@@ -7,5 +7,13 @@
   "package_name": "DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_2_0.pext",
   "package_sha256": "59a8456ff48036ad8d0dd47a69d2f6a9b7065959a1f94aadf49af073081cbfba",
   "playnite_toolbox_release": "10.56",
-  "runtime_install_gate": "PENDING"
+  "runtime_install_gate": "PASS",
+  "runtime_install_validated_at": "2026-09-27",
+  "runtime_install_notes": [
+    "Installed the exact packaged .pext on real Playnite hardware.",
+    "Plugin loaded as Version 1.2.0.",
+    "Direct settings menu and Update Center opened normally.",
+    "Existing tracking data remained available.",
+    "Representative manual check completed normally."
+  ]
 }
