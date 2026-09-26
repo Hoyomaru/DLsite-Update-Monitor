@@ -294,6 +294,16 @@ namespace DLsiteUpdateMonitor
             PlayniteApi.Dialogs.ShowMessage(message, "DLsite Update Monitor");
         }
 
+        internal bool ConfirmBulkAction(string actionLabel, int count)
+        {
+            if (count <= 1) return true;
+            var answer = PlayniteApi.Dialogs.ShowMessage(
+                count + "件を「" + actionLabel + "」として処理します。\n\n続行しますか？",
+                "DLsite Update Monitor",
+                MessageBoxButton.YesNo);
+            return answer == MessageBoxResult.Yes;
+        }
+
         private List<Game> ResolveGames(IEnumerable<Guid> gameIds)
         {
             if (gameIds == null) return new List<Game>();
