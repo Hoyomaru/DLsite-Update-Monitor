@@ -43,6 +43,11 @@ namespace DLsiteUpdateMonitor
 
         public DLsiteUpdateMonitorPlugin(IPlayniteAPI api) : base(api)
         {
+            Properties = new GenericPluginProperties
+            {
+                HasSettings = true
+            };
+
             Settings = new PluginSettings(this);
             repository = new TrackingRepository(GetPluginUserDataPath());
             try
