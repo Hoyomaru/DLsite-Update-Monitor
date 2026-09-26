@@ -131,6 +131,7 @@ namespace DLsiteUpdateMonitor.Core.Services
                 throw new ArgumentException("Failure health must describe an error or cancellation.", nameof(health));
 
             record.LastAttemptAtUtc = nowUtc;
+            record.RetryNotBeforeUtc = null;
             record.LastCheckHealth = health;
             record.LastError = error;
             // Intentionally do not touch MonitoringState, AcknowledgedSnapshot, CurrentSnapshot or LastSuccessfulCheckAtUtc.
@@ -180,6 +181,7 @@ namespace DLsiteUpdateMonitor.Core.Services
             record.FirstCheckedAtUtc = null;
             record.LastAttemptAtUtc = null;
             record.LastSuccessfulCheckAtUtc = null;
+            record.RetryNotBeforeUtc = null;
 
             AddHistory(record, new TrackingHistoryEntry
             {
