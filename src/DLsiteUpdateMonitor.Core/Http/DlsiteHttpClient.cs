@@ -1,6 +1,8 @@
 using System;
+using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -28,6 +30,11 @@ namespace DLsiteUpdateMonitor.Core.Http
             if (this.options.MinimumRequestInterval < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(options));
             if (this.options.Timeout <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(options));
             if (this.options.RetryCount < 0) throw new ArgumentOutOfRangeException(nameof(options));
+            if (this.options.FirstRetryDelay < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(options));
+            if (this.options.SecondRetryDelay < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(options));
+            if (this.options.MaxRetryAfterDelay < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(options));
+            if (this.options.MaxRedirects < 0) throw new ArgumentOutOfRangeException(nameof(options));
+            if (this.options.MaxResponseBytes <= 0) throw new ArgumentOutOfRangeException(nameof(options));
         }
 
         public static DlsiteHttpClient CreateDefault(DlsiteHttpOptions options = null)
@@ -36,7 +43,7 @@ namespace DLsiteUpdateMonitor.Core.Http
             {
                 UseCookies = true,
                 CookieContainer = new CookieContainer(),
-                AllowAutoRedirect = true
+                AllowAutoRedirect = false
             };
             var baseUri = new Uri("https://www.dlsite.com");
             handler.CookieContainer.Add(baseUri, new Cookie("locale", "ja_JP", "/", ".dlsite.com"));
@@ -58,13 +65,20 @@ namespace DLsiteUpdateMonitor.Core.Http
                 for (var attempt = 1; attempt <= maxAttempts; attempt++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    await EnforceMinimumIntervalAsync(cancellationToken).ConfigureAwait(false);
 
                     var result = await SendOnceAsync(url, attempt, cancellationToken).ConfigureAwait(false);
                     last = result;
 
                     if (result.Success || !ShouldRetry(result) || attempt == maxAttempts)
                     {
+                        return result;
+                    }
+
+                    if (result.RetryAfter.HasValue && result.RetryAfter.Value > options.MaxRetryAfterDelay)
+                    {
+                        result.ErrorMessage = "DLsite requested Retry-After " + FormatDuration(result.RetryAfter.Value)
+                            + ", which exceeds the in-operation wait cap of " + FormatDuration(options.MaxRetryAfterDelay)
+                            + ". This check was deferred so other monitor operations can continue.";
                         return result;
                     }
 
@@ -99,81 +113,174 @@ namespace DLsiteUpdateMonitor.Core.Http
 
         private async Task<DlsiteFetchResult> SendOnceAsync(string url, int attempt, CancellationToken externalCancellation)
         {
-            lastRequestStartedUtc = clock.UtcNow;
-            using (var request = new HttpRequestMessage(HttpMethod.Get, url))
+            Uri currentUri;
+            if (!Uri.TryCreate(url, UriKind.Absolute, out currentUri) || !IsTrustedResolvedUri(currentUri))
+            {
+                return new DlsiteFetchResult
+                {
+                    Status = DlsiteFetchStatus.UntrustedRedirect,
+                    SourceUrl = url,
+                    ResolvedUrl = url,
+                    Attempts = attempt,
+                    ErrorMessage = "DLsite request URL must use HTTPS and a trusted DLsite host."
+                };
+            }
+
             using (var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(externalCancellation))
             {
-                request.Headers.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/136 Safari/537.36");
-                request.Headers.AcceptLanguage.ParseAdd("ja-JP,ja;q=0.9,en;q=0.5");
                 timeoutCts.CancelAfter(options.Timeout);
+                var redirectCount = 0;
 
                 try
                 {
-                    using (var response = await client.SendAsync(request, HttpCompletionOption.ResponseContentRead, timeoutCts.Token).ConfigureAwait(false))
+                    while (true)
                     {
-                        var status = response.StatusCode;
-                        var resolvedUri = response.RequestMessage?.RequestUri;
-                        var resolvedUrl = resolvedUri?.ToString() ?? url;
+                        await EnforceMinimumIntervalAsync(timeoutCts.Token).ConfigureAwait(false);
+                        lastRequestStartedUtc = clock.UtcNow;
 
-                        if (!IsTrustedResolvedUri(resolvedUri))
+                        using (var request = new HttpRequestMessage(HttpMethod.Get, currentUri))
                         {
-                            return Error(
-                                DlsiteFetchStatus.UntrustedRedirect,
-                                status,
-                                url,
-                                resolvedUrl,
-                                attempt,
-                                "DLsite request resolved to an untrusted non-HTTPS or non-DLsite URL.");
-                        }
+                            request.Headers.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/136 Safari/537.36");
+                            request.Headers.AcceptLanguage.ParseAdd("ja-JP,ja;q=0.9,en;q=0.5");
 
-                        if (status == HttpStatusCode.OK)
-                        {
-                            return new DlsiteFetchResult
+                            using (var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeoutCts.Token).ConfigureAwait(false))
                             {
-                                Status = DlsiteFetchStatus.Success,
-                                HttpStatusCode = status,
-                                Html = await response.Content.ReadAsStringAsync().ConfigureAwait(false),
-                                SourceUrl = url,
-                                ResolvedUrl = resolvedUrl,
-                                Attempts = attempt
-                            };
-                        }
+                                var status = response.StatusCode;
+                                var resolvedUri = response.RequestMessage?.RequestUri ?? currentUri;
+                                var resolvedUrl = resolvedUri.ToString();
 
-                        if ((int)status == 429)
-                        {
-                            return new DlsiteFetchResult
-                            {
-                                Status = DlsiteFetchStatus.RateLimited,
-                                HttpStatusCode = status,
-                                SourceUrl = url,
-                                ResolvedUrl = resolvedUrl,
-                                Attempts = attempt,
-                                RetryAfter = ParseRetryAfter(response)
-                            };
-                        }
+                                if (!IsTrustedResolvedUri(resolvedUri))
+                                {
+                                    return Error(
+                                        DlsiteFetchStatus.UntrustedRedirect,
+                                        status,
+                                        url,
+                                        resolvedUrl,
+                                        attempt,
+                                        "DLsite request resolved to an untrusted non-HTTPS or non-DLsite URL.");
+                                }
 
-                        if (status == HttpStatusCode.Forbidden)
-                        {
-                            return Error(DlsiteFetchStatus.AccessDenied, status, url, resolvedUrl, attempt, "DLsite returned HTTP 403.");
-                        }
+                                if (IsRedirectStatus(status))
+                                {
+                                    var location = response.Headers.Location;
+                                    if (location == null)
+                                    {
+                                        return Error(
+                                            DlsiteFetchStatus.ClientError,
+                                            status,
+                                            url,
+                                            resolvedUrl,
+                                            attempt,
+                                            "DLsite returned a redirect without a Location header.");
+                                    }
 
-                        if (status == HttpStatusCode.NotFound || status == HttpStatusCode.Gone)
-                        {
-                            return Error(DlsiteFetchStatus.ProductUnavailable, status, url, resolvedUrl, attempt, "DLsite product is unavailable.");
-                        }
+                                    Uri nextUri;
+                                    try
+                                    {
+                                        nextUri = location.IsAbsoluteUri ? location : new Uri(resolvedUri, location);
+                                    }
+                                    catch (UriFormatException)
+                                    {
+                                        return Error(
+                                            DlsiteFetchStatus.UntrustedRedirect,
+                                            status,
+                                            url,
+                                            location.ToString(),
+                                            attempt,
+                                            "DLsite returned an invalid redirect Location.");
+                                    }
 
-                        if ((int)status >= 400 && (int)status <= 499)
-                        {
-                            return Error(DlsiteFetchStatus.ClientError, status, url, resolvedUrl, attempt, "DLsite client error: HTTP " + (int)status + ".");
-                        }
+                                    // Validate BEFORE sending the next request. This prevents a DLsite response
+                                    // from causing the user's PC to contact arbitrary HTTP/external/LAN hosts.
+                                    if (!IsTrustedResolvedUri(nextUri))
+                                    {
+                                        return Error(
+                                            DlsiteFetchStatus.UntrustedRedirect,
+                                            status,
+                                            url,
+                                            nextUri.ToString(),
+                                            attempt,
+                                            "DLsite redirect target is not a trusted HTTPS DLsite URL.");
+                                    }
 
-                        if ((int)status >= 500 && (int)status <= 599)
-                        {
-                            return Error(DlsiteFetchStatus.ServerError, status, url, resolvedUrl, attempt, "DLsite server error: HTTP " + (int)status + ".");
-                        }
+                                    if (redirectCount >= options.MaxRedirects)
+                                    {
+                                        return Error(
+                                            DlsiteFetchStatus.NetworkError,
+                                            status,
+                                            url,
+                                            resolvedUrl,
+                                            attempt,
+                                            "DLsite redirect limit exceeded.");
+                                    }
 
-                        return Error(DlsiteFetchStatus.NetworkError, status, url, resolvedUrl, attempt, "Unexpected HTTP status: " + (int)status + ".");
+                                    redirectCount++;
+                                    currentUri = nextUri;
+                                    continue;
+                                }
+
+                                if (status == HttpStatusCode.OK)
+                                {
+                                    return new DlsiteFetchResult
+                                    {
+                                        Status = DlsiteFetchStatus.Success,
+                                        HttpStatusCode = status,
+                                        Html = await ReadContentWithLimitAsync(response.Content, timeoutCts.Token).ConfigureAwait(false),
+                                        SourceUrl = url,
+                                        ResolvedUrl = resolvedUrl,
+                                        Attempts = attempt
+                                    };
+                                }
+
+                                if ((int)status == 429)
+                                {
+                                    return new DlsiteFetchResult
+                                    {
+                                        Status = DlsiteFetchStatus.RateLimited,
+                                        HttpStatusCode = status,
+                                        SourceUrl = url,
+                                        ResolvedUrl = resolvedUrl,
+                                        Attempts = attempt,
+                                        RetryAfter = ParseRetryAfter(response),
+                                        ErrorMessage = "DLsite returned HTTP 429."
+                                    };
+                                }
+
+                                if (status == HttpStatusCode.Forbidden)
+                                {
+                                    return Error(DlsiteFetchStatus.AccessDenied, status, url, resolvedUrl, attempt, "DLsite returned HTTP 403.");
+                                }
+
+                                if (status == HttpStatusCode.NotFound || status == HttpStatusCode.Gone)
+                                {
+                                    return Error(DlsiteFetchStatus.ProductUnavailable, status, url, resolvedUrl, attempt, "DLsite product is unavailable.");
+                                }
+
+                                if ((int)status >= 400 && (int)status <= 499)
+                                {
+                                    return Error(DlsiteFetchStatus.ClientError, status, url, resolvedUrl, attempt, "DLsite client error: HTTP " + (int)status + ".");
+                                }
+
+                                if ((int)status >= 500 && (int)status <= 599)
+                                {
+                                    return Error(DlsiteFetchStatus.ServerError, status, url, resolvedUrl, attempt, "DLsite server error: HTTP " + (int)status + ".");
+                                }
+
+                                return Error(DlsiteFetchStatus.NetworkError, status, url, resolvedUrl, attempt, "Unexpected HTTP status: " + (int)status + ".");
+                            }
+                        }
                     }
+                }
+                catch (InvalidDataException ex)
+                {
+                    return new DlsiteFetchResult
+                    {
+                        Status = DlsiteFetchStatus.NetworkError,
+                        SourceUrl = url,
+                        ResolvedUrl = currentUri.ToString(),
+                        Attempts = attempt,
+                        ErrorMessage = ex.Message
+                    };
                 }
                 catch (TaskCanceledException) when (!externalCancellation.IsCancellationRequested)
                 {
@@ -181,6 +288,7 @@ namespace DLsiteUpdateMonitor.Core.Http
                     {
                         Status = DlsiteFetchStatus.Timeout,
                         SourceUrl = url,
+                        ResolvedUrl = currentUri.ToString(),
                         Attempts = attempt,
                         ErrorMessage = "DLsite request timed out."
                     };
@@ -191,11 +299,70 @@ namespace DLsiteUpdateMonitor.Core.Http
                     {
                         Status = DlsiteFetchStatus.NetworkError,
                         SourceUrl = url,
+                        ResolvedUrl = currentUri.ToString(),
                         Attempts = attempt,
                         ErrorMessage = ex.Message
                     };
                 }
             }
+        }
+
+        private async Task<string> ReadContentWithLimitAsync(HttpContent content, CancellationToken cancellationToken)
+        {
+            if (content == null) return string.Empty;
+
+            var declaredLength = content.Headers.ContentLength;
+            if (declaredLength.HasValue && declaredLength.Value > options.MaxResponseBytes)
+            {
+                throw new InvalidDataException("DLsite response exceeded the configured size limit of "
+                    + options.MaxResponseBytes + " bytes.");
+            }
+
+            using (var stream = await content.ReadAsStreamAsync().ConfigureAwait(false))
+            using (var buffer = new MemoryStream())
+            {
+                var chunk = new byte[16 * 1024];
+                var total = 0;
+                while (true)
+                {
+                    var read = await stream.ReadAsync(chunk, 0, chunk.Length, cancellationToken).ConfigureAwait(false);
+                    if (read <= 0) break;
+                    total += read;
+                    if (total > options.MaxResponseBytes)
+                    {
+                        throw new InvalidDataException("DLsite response exceeded the configured size limit of "
+                            + options.MaxResponseBytes + " bytes.");
+                    }
+                    buffer.Write(chunk, 0, read);
+                }
+
+                buffer.Position = 0;
+                var encoding = GetResponseEncoding(content);
+                using (var reader = new StreamReader(buffer, encoding, true))
+                {
+                    return reader.ReadToEnd();
+                }
+            }
+        }
+
+        private static Encoding GetResponseEncoding(HttpContent content)
+        {
+            var charset = content.Headers.ContentType?.CharSet;
+            if (string.IsNullOrWhiteSpace(charset)) return Encoding.UTF8;
+            try
+            {
+                return Encoding.GetEncoding(charset.Trim().Trim('"'));
+            }
+            catch (ArgumentException)
+            {
+                return Encoding.UTF8;
+            }
+        }
+
+        private static bool IsRedirectStatus(HttpStatusCode status)
+        {
+            var code = (int)status;
+            return code == 301 || code == 302 || code == 303 || code == 307 || code == 308;
         }
 
         private async Task EnforceMinimumIntervalAsync(CancellationToken cancellationToken)
@@ -227,6 +394,13 @@ namespace DLsiteUpdateMonitor.Core.Http
         {
             if (completedAttempt <= 1) return options.FirstRetryDelay;
             return options.SecondRetryDelay;
+        }
+
+        private static string FormatDuration(TimeSpan value)
+        {
+            if (value.TotalHours >= 1) return value.TotalHours.ToString("0.##") + "h";
+            if (value.TotalMinutes >= 1) return value.TotalMinutes.ToString("0.##") + "m";
+            return value.TotalSeconds.ToString("0.##") + "s";
         }
 
         private TimeSpan? ParseRetryAfter(HttpResponseMessage response)
