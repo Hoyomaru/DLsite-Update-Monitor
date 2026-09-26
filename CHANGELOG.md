@@ -8,7 +8,30 @@
 
 ## [Unreleased]
 
-次回Release向けの変更はここへ記録します。
+### Added
+
+- Update Centerに、確認済み基準と現在値の更新情報・ファイル容量を左右比較する差分ビューを追加。
+- tracking JSONの確定状態からPlayniteタグを再同期する修復操作を追加。
+- HTTP応答本文のサイズ上限を追加。
+
+### Changed
+
+- HTTP redirectを自動追跡せず、各LocationをHTTPS + DLsite hostとして検証してから次のrequestを送る方式へ変更。
+- 長いRetry-Afterは同一チェック内で待ち続けず、後続のscheduler/manual operationへ排他を返す方式へ変更。
+- 起動時にplugin-owned tagをtracking状態と照合し、前回tag同期だけが失敗したケースを自動修復。
+- READMEの一般利用者向けInstall案内を公開済みv1.2.0へ統一。
+
+### Fixed
+
+- Gamesが欠落・null・不正型のtracking primaryを空DBとして受理し、正常backupを使わず追跡記録を失い得る問題。
+- 保存成功後のPlaynite tag反映失敗を「追跡状態の保存失敗」と誤表示し、確定済みJSONとUI案内が食い違う問題。
+- DLsite responseの外部/HTTP redirect先へ、信頼性検証より先にGETを送信し得る問題。
+
+### Validation
+
+- Games欠落/null/型不正 + 正常backupの回帰testを追加。
+- 外部/HTTP redirectをfollow前に拒否するtest、trusted redirect test、長いRetry-Afterの即時返却test、response size上限testを追加。
+- SnapshotDifferのfield diff testを追加。
 
 ## [1.2.0] - 2026-09-27
 
