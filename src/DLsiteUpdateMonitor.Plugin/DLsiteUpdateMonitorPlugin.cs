@@ -136,6 +136,12 @@ namespace DLsiteUpdateMonitor
             };
             yield return new MainMenuItem
             {
+                Description = "設定を開く",
+                MenuSection = "@DLsite Update Monitor",
+                Action = _ => OpenSettingsView()
+            };
+            yield return new MainMenuItem
+            {
                 Description = "全ゲームを今すぐ確認",
                 MenuSection = "@DLsite Update Monitor",
                 Action = _ => CheckGames(PlayniteApi.Database.Games.ToList(), true)
