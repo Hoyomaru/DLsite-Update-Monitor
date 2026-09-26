@@ -329,7 +329,7 @@ namespace DLsiteUpdateMonitor
                 ApplyTags(results.Select(r => r.GameId).Distinct().ToList());
                 if (openUpdateCenterAfter)
                 {
-                    ShowUpdateCenter(BuildSummaryText(results, progressResult.Canceled));
+                    ShowUpdateCenter(BuildSummaryText(results, progressResult.Canceled, true));
                 }
                 else if (showSummary)
                 {
@@ -479,7 +479,7 @@ namespace DLsiteUpdateMonitor
             });
         }
 
-        private static string BuildSummaryText(List<GameRunResult> results, bool canceled)
+        private static string BuildSummaryText(List<GameRunResult> results, bool canceled, bool compact = false)
         {
             var monitored = results.Count(r => !r.Skipped);
             var baseline = results.Count(r => r.ComparisonOutcome == ComparisonOutcome.BaselineCreated);
@@ -489,14 +489,26 @@ namespace DLsiteUpdateMonitor
             var errors = results.Count(r => r.Health != CheckHealth.Healthy && !r.Skipped);
             var skipped = results.Count(r => r.Skipped);
 
+            if (compact)
+            {
+                return (canceled ? "途中でキャンセルされました。処理済み分のみ反映。 " : "")
+                    + $"チェック完了 {monitored}件"
+                    + $" / 監視開始 {baseline}"
+                    + $" / 更新あり {update}"
+                    + $" / 配布物変更 {file}"
+                    + $" / 両方 {both}"
+                    + $" / 要確認 {errors}"
+                    + $" / リンクなし {skipped}";
+            }
+
             return (canceled ? "※ ユーザー操作により途中でキャンセルされました。処理済み分のみ反映しています。\n\n" : "")
-                + $"チェック完了: {monitored}件"
-                + $" / 監視開始 {baseline}件"
-                + $" / 更新あり {update}件"
-                + $" / 配布物変更 {file}件"
-                + $" / 両方変更 {both}件"
-                + $" / エラー・要確認 {errors}件"
-                + $" / DLsiteリンクなし {skipped}件";
+                + $"対象: {monitored} 件\n"
+                + $"監視開始: {baseline} 件\n"
+                + $"更新あり: {update} 件\n"
+                + $"配布物変更: {file} 件\n"
+                + $"両方変更: {both} 件\n"
+                + $"エラー/要確認: {errors} 件\n"
+                + $"DLsiteリンクなし: {skipped} 件";
         }
 
         private void ShowSummary(List<GameRunResult> results, bool canceled)
