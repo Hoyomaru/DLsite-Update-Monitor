@@ -26,7 +26,7 @@ v1.2.0のTracking Schema 1とfail-closed設計を維持しながら、更新内�
 - 長いRetry-Afterは同一チェック内で待ち続けず、再試行可能時刻をtrackingへ保存してschedulerへ排他を返す方式へ変更。期限後は通常の自動チェック間隔より優先して再確認する。
 - PlayniteのPlugin管理タグIDをservice内でキャッシュし、大規模ライブラリでゲームごとの全タグ検索を避けるよう変更。
 - 起動時にplugin-owned tagをtracking状態と照合し、前回tag同期だけが失敗したケースを自動修復。
-- READMEの一般利用者向けInstall案内を公開済みv1.2.0へ統一。
+- READMEの一般利用者向けInstall案内を正式公開Versionと一致させる検証を追加。
 
 ### Fixed
 
@@ -43,7 +43,7 @@ v1.2.0のTracking Schema 1とfail-closed設計を維持しながら、更新内�
 - TrackingDatabaseClonerの対象property追加時にレビューを強制する契約testを追加。
 - 変更後のPlaynite 10.56実環境確認: **PASS**（2026-09-27、ユーザー確認）。
 - Release prep前のmain CI: Core 87 tests / Static validation / Windows net462 Plugin build / payload boundary: **PASS**。
-- v1.3.0 exact `.pext` install gate: candidate package生成後に実施。
+- v1.3.0 exact `.pext` install / Plugin load / Version 1.3.0 / Settings / Update Center / existing tracking / representative check: **PASS**（2026-09-27）。
 
 ## [1.2.0] - 2026-09-27
 
