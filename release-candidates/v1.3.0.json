@@ -21,6 +21,11 @@
     "Existing tracking data remained available.",
     "Representative check completed normally."
   ],
-  "release_status": "publishing",
-  "runtime_install_validated_at": "2026-09-27"
+  "release_status": "published",
+  "runtime_install_validated_at": "2026-09-27",
+  "release_tag": "v1.3.0",
+  "release_commit": "dacec83455068ce4ad4227185d07dd13feced240",
+  "release_url": "https://github.com/Hoyomaru/DLsite-Update-Monitor/releases/tag/v1.3.0",
+  "release_asset_digest": "sha256:e463df6bc42589ec30b7415a05e965e7a396b97196b1c7d9b9aadc1d3146b0b3",
+  "published_at": "2026-09-27"
 }
