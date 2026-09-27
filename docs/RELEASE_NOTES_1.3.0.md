@@ -37,8 +37,11 @@ v1.2.0のTracking Schema `1`、fail-closed比較、copy-on-write永続化、tag 
   - Windows net462 Plugin build: **PASS**
   - payload boundary: **PASS**
 - 2026-09-27 Playnite 10.56実環境で今回の機能変更を確認: **PASS**
-- v1.3.0 exact release candidateは公式Playnite 10.56 Toolboxで生成
-- v1.3.0 exact `.pext` install gate: **candidate生成後に最終確認**
+- v1.3.0 exact release candidateを公式Playnite 10.56 Toolboxで生成: **PASS**
+- Candidate source: `4fa5d07ace8d0c849d9ebc236285659252fc056e`
+- Package: `DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_3_0.pext`
+- SHA-256: `e463df6bc42589ec30b7415a05e965e7a396b97196b1c7d9b9aadc1d3146b0b3`
+- v1.3.0 exact `.pext` install gate: **PENDING**
 
 ## Upgrade
 
