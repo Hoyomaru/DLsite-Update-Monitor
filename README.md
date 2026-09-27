@@ -20,29 +20,29 @@ DLsite作品を多数管理していると、各商品ページを手作業で�
 
 ## 現在の状態
 
-- 現在の正式Version: **1.2.0**
-- GitHub Release: **v1.2.0 公開済み**
-- 最新公開Git tag: **`v1.2.0`**
-- 開発状態: **v1.3.0 Release Candidate準備中（正式公開はv1.2.0）**
+- 現在の正式Version: **1.3.0**
+- GitHub Release: **v1.3.0 公開済み**
+- 最新公開Git tag: **`v1.3.0`**
+- 開発状態: **v1.3.0 公開済み。次の変更はUnreleasedとして管理**
 - Playnite実機検証基準: **10.56**
-- v1.2.0 Core自動テスト / Static validation: **PASS（GitHub Actions）**
-- v1.2.0 Windows Plugin build / payload境界検証: **PASS（GitHub Actions）**
-- v1.2.0 Playnite 10.56実機確認: **Update Center + automatic check Gate H + final `.pext` install PASS**
-- v1.2.0 最終`.pext`インストール試験: **PASS**
+- v1.3.0 Core自動テスト / Static validation: **87 tests PASS（GitHub Actions）**
+- v1.3.0 Windows Plugin build / payload境界検証: **PASS（GitHub Actions）**
+- v1.3.0 Playnite 10.56実機確認: **機能Smoke + exact `.pext` install PASS**
+- v1.3.0 最終`.pext`インストール試験: **PASS**
 - Tracking Schema: **1**
 - GitHub Actions / CI: **導入済み**
 - License: **MIT**
 
-v1.2.0は、v1.1.0の安全設計を維持したままUpdate Centerと既定OFFのautomatic checkを追加したbackward-compatible feature releaseです。現在は、差分ビューと監査修正を含むv1.3.0 candidateを準備しています。今回の機能変更はPlaynite 10.56実環境で確認済みで、正式公開前にv1.3.0 exact `.pext` のinstall gateを実施します。
+v1.3.0は、v1.2.0のTracking Schema 1とfail-closed設計を維持したまま、Update Centerの差分ビュー、tracking/HTTP/tag同期の安全性・回復性改善を追加したbackward-compatible feature releaseです。Playnite 10.56実環境で機能Smokeとexact `.pext` installを確認済みです。
 
-現在公開中のv1.2.0パッケージ:
+現在公開中のv1.3.0パッケージ:
 
 ```text
-DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_2_0.pext
-SHA-256: 59a8456ff48036ad8d0dd47a69d2f6a9b7065959a1f94aadf49af073081cbfba
+DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_3_0.pext
+SHA-256: e463df6bc42589ec30b7415a05e965e7a396b97196b1c7d9b9aadc1d3146b0b3
 ```
 
-v1.2.0の変更点と検証内容は [docs/RELEASE_NOTES_1.2.0.md](docs/RELEASE_NOTES_1.2.0.md) を参照してください。v1.1.0の記録も [docs/RELEASE_NOTES_1.1.0.md](docs/RELEASE_NOTES_1.1.0.md) に残しています。v0.1.0の詳細な検証証跡と旧パッケージSHA-256は [RELEASE_STATUS.md](RELEASE_STATUS.md) に保存しています。
+v1.3.0の変更点と検証内容は [docs/RELEASE_NOTES_1.3.0.md](docs/RELEASE_NOTES_1.3.0.md) を参照してください。v1.2.0の記録も [docs/RELEASE_NOTES_1.2.0.md](docs/RELEASE_NOTES_1.2.0.md) に残しています。v0.1.0の詳細な検証証跡と旧パッケージSHA-256は [RELEASE_STATUS.md](RELEASE_STATUS.md) に保存しています。
 
 ## 主な機能
 
@@ -108,7 +108,7 @@ v1.2.0の変更点と検証内容は [docs/RELEASE_NOTES_1.2.0.md](docs/RELEASE_
 
 ### 一般利用者向け
 
-正式公開版を使う場合は [v1.2.0 Release](https://github.com/Hoyomaru/DLsite-Update-Monitor/releases/tag/v1.2.0) のAssetsから次の`.pext`をダウンロードし、Playniteへインストールしてください。
+正式公開版を使う場合は [v1.3.0 Release](https://github.com/Hoyomaru/DLsite-Update-Monitor/releases/tag/v1.3.0) のAssetsから次の`.pext`をダウンロードし、Playniteへインストールしてください。
 
 ```text
 DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_2_0.pext
@@ -117,7 +117,7 @@ DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_2_0.pext
 公開AssetのSHA-256:
 
 ```text
-59a8456ff48036ad8d0dd47a69d2f6a9b7065959a1f94aadf49af073081cbfba
+e463df6bc42589ec30b7415a05e965e7a396b97196b1c7d9b9aadc1d3146b0b3
 ```
 
 同じReleaseに添付されている`SHA256SUMS.txt`も確認用に利用できます。
@@ -125,7 +125,7 @@ DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_2_0.pext
 `.pext`はソースツリーへコミットせず、GitHub Releasesで配布します。
 
 > [!NOTE]
-> `main`には今後Unreleasedの変更が入る可能性があります。安定版を利用する場合はGitHub Releaseのv1.2.0配布物を使用してください。
+> `main`には今後Unreleasedの変更が入る可能性があります。安定版を利用する場合はGitHub Releaseのv1.3.0配布物を使用してください。
 
 Release作成手順は [docs/RELEASE.md](docs/RELEASE.md) を参照してください。
 
@@ -158,7 +158,7 @@ GitHub Actionsの実機テスト候補では、Windows build jobが`DLsiteUpdate
 
 ## 更新
 
-公開v1.0.0、v1.1.0、v1.2.0はいずれもTracking Schema `1`を使用しています。これらのVersion間の更新でTracking Schema migrationは発生しません。
+公開v1.0.0、v1.1.0、v1.2.0、v1.3.0はいずれもTracking Schema `1`を使用しています。これらのVersion間の更新でTracking Schema migrationは発生しません。
 
 更新時は念のためPlayniteまたはプラグインユーザーデータをバックアップしてから、新しい検証済みパッケージへ更新してください。
 
