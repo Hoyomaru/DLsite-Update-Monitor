@@ -1,7 +1,7 @@
 # DLsite Update Monitor v0.1.0 — 最終リリース検証記録
 
 > [!NOTE]
-> この文書は、**v1.0.0正式公開前に使用していたv0.1.0の検証証跡**として保持しています。現在の正式公開Versionはv1.1.0です。以下の`.pext`名とSHA-256はv0.1.0専用であり、後続Versionへ流用しません。v1.1.0の公開内容は`docs/RELEASE_NOTES_1.1.0.md`と`CHANGELOG.md`を参照してください。
+> この文書は、**v1.0.0正式公開前に使用していたv0.1.0の検証証跡**として保持しています。現在の正式公開Versionはv1.3.0です。以下の`.pext`名とSHA-256はv0.1.0専用であり、後続Versionへ流用しません。現行Releaseの公開内容は`docs/RELEASE_NOTES_1.3.0.md`、`docs/RELEASE.md`、`CHANGELOG.md`を参照してください。
 
 ## 最終状態
 
