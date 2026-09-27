@@ -45,6 +45,20 @@ v1.2.0のTracking Schema 1とfail-closed設計を維持しながら、更新内�
 - Release prep前のmain CI: Core 87 tests / Static validation / Windows net462 Plugin build / payload boundary: **PASS**。
 - v1.3.0 exact `.pext` install / Plugin load / Version 1.3.0 / Settings / Update Center / existing tracking / representative check: **PASS**（2026-09-27）。
 
+### Published
+
+2026-09-27にGitHub Releaseとして正式公開しました。
+
+```text
+Release title: DLsite Update Monitor v1.3.0
+Tag: v1.3.0
+Tagged commit: dacec83455068ce4ad4227185d07dd13feced240
+Package: DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_3_0.pext
+SHA-256: e463df6bc42589ec30b7415a05e965e7a396b97196b1c7d9b9aadc1d3146b0b3
+```
+
+Release Assetsには`.pext`と`SHA256SUMS.txt`を公開し、GitHub側のAsset digestがcandidate SHA-256と一致することを確認済みです。
+
 ## [1.2.0] - 2026-09-27
 
 追跡状態をまとめて扱えるUpdate Centerと、既定OFFのsilent automatic checkを追加するbackward-compatible feature releaseです。Tracking Schemaは1のままです。
