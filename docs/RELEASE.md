@@ -9,7 +9,7 @@
 
 ## 1. 現在の公開状況
 
-v1.3.0は2026-09-27の実環境Smoke、exact release candidate生成、candidate packageそのものの`.pext` install確認を完了しています。公開GateはすべてPASSしており、同一Artifactを再buildせずGitHub Releaseへ昇格します。
+v1.3.0は2026-09-27に正式公開済みです。実環境Smoke、exact release candidate生成、candidate packageそのものの`.pext` install確認を完了した同一Artifactを再buildせずGitHub Releaseへ昇格し、公開Asset digestの一致も確認済みです。
 
 ```text
 Version: 1.3.0
@@ -389,6 +389,21 @@ SHA256SUMS.txt
 - source treeへ`.pext`を誤commitしていない
 
 ## 15. 公開Release履歴
+
+### v1.3.0 — 2026-09-27
+
+- Release title: `DLsite Update Monitor v1.3.0`
+- Tag: `v1.3.0`
+- Tagged commit: `dacec83455068ce4ad4227185d07dd13feced240`
+- Exact package source commit: `4fa5d07ace8d0c849d9ebc236285659252fc056e`
+- Package workflow run: `36281251138`
+- Publish workflow run: `36281787393`
+- Package: `DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_3_0.pext`
+- SHA-256: `e463df6bc42589ec30b7415a05e965e7a396b97196b1c7d9b9aadc1d3146b0b3`
+- Core 87 tests / Static validation / Windows build / payload boundary: **PASS**
+- Playnite 10.56 functional smoke: **PASS**
+- Exact `.pext` install gate: **PASS**
+- GitHub Release asset digest: **一致確認済み**
 
 ### v1.2.0 — 2026-09-27
 
