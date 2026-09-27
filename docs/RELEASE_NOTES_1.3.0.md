@@ -41,7 +41,7 @@ v1.2.0のTracking Schema `1`、fail-closed比較、copy-on-write永続化、tag 
 - Candidate source: `4fa5d07ace8d0c849d9ebc236285659252fc056e`
 - Package: `DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_3_0.pext`
 - SHA-256: `e463df6bc42589ec30b7415a05e965e7a396b97196b1c7d9b9aadc1d3146b0b3`
-- v1.3.0 exact `.pext` install gate: **PENDING**
+- v1.3.0 exact `.pext` install / Plugin load / Version 1.3.0 / Settings / Update Center / existing tracking / representative check: **PASS**
 
 ## Upgrade
 
