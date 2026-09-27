@@ -4,7 +4,7 @@
 
 今後の変更では、最初に [README.md](README.md)、この `DEVELOPMENT.md`、[CHANGELOG.md](CHANGELOG.md)、対象コードと関連テストを確認してください。内部構造は [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)、ビルドは [BUILD.md](BUILD.md)、Release工程は [docs/RELEASE.md](docs/RELEASE.md)、実機確認は [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md) を参照します。
 
-仕様の最終判断は**現在の実装とテスト**を基準にします。公開済みv1.2.0の検証記録と、v1.3.0 candidateの差分ビュー / 監査修正検証を混同しないでください。
+仕様の最終判断は**現在の実装とテスト**を基準にします。公開済みv1.3.0の検証記録と、それ以前のRelease検証を混同しないでください。
 
 ---
 
@@ -12,19 +12,19 @@
 
 | 項目 | 現在の状態 |
 |---|---|
-| 現在の正式Version | 1.2.0 |
-| GitHub Release | `DLsite Update Monitor v1.2.0` 公開済み |
-| Git tag | `v1.2.0` |
-| Plugin / extension Version | `1.3.0` candidate |
+| 現在の正式Version | 1.3.0 |
+| GitHub Release | `DLsite Update Monitor v1.3.0` 公開済み |
+| Git tag | `v1.3.0` |
+| Plugin / extension Version | `1.3.0` |
 | Playnite実機基準 | 10.56 |
 | Plugin target | .NET Framework 4.6.2 |
 | Core target | .NET Framework 4.6.2 / .NET 8.0 |
-| v1.1.0 Coreテスト | 72件 PASS / 0 failed / 0 skipped（GitHub Actions） |
-| v1.1.0 Static validation | PASS |
-| v1.1.0 Windows Plugin build | PASS |
-| v1.1.0 payload境界検証 | PASS |
-| v1.2.0機能実機確認 | Update Center + automatic check Gate H PASS（2026-09-27） |
-| v1.2.0 最終`.pext` install | PASS |
+| v1.3.0 Coreテスト | 87件 PASS / 0 failed / 0 skipped（GitHub Actions） |
+| v1.3.0 Static validation | PASS |
+| v1.3.0 Windows Plugin build | PASS |
+| v1.3.0 payload境界検証 | PASS |
+| v1.3.0機能実機確認 | 差分ビュー / tag再同期 / 監査修正を含む実環境Smoke PASS（2026-09-27） |
+| v1.3.0 最終`.pext` install | PASS |
 | Tracking Schema | 1 |
 | GitHub Actions / CI | 導入済み |
 | License | MIT |
@@ -32,6 +32,8 @@
 v1.1.0は2026-09-15に正式公開済みです。実機Smoke Test Gate A〜G、Version 1.1.0最終Artifact短縮Smoke、最終`.pext`インストール試験まで完了しています。詳細は [docs/RELEASE_NOTES_1.1.0.md](docs/RELEASE_NOTES_1.1.0.md) を参照してください。
 
 v1.2.0は2026-09-27に正式公開済みです。Version 1.2.0のexact `.pext`をPlaynite 10.56へinstallして確認した同一Artifactを再buildせずGitHub Releaseへ昇格しています。v1.1.0の過去検証結果とは区別して記録しています。
+
+v1.3.0は2026-09-27に差分ビューと監査修正を含む実環境Smoke、およびexact `.pext` installを完了した同一ArtifactをGitHub Releaseへ昇格するReleaseです。Tracking Schemaは1のままです。
 
 公開Asset:
 
