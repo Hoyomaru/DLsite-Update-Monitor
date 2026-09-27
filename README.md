@@ -111,7 +111,7 @@ v1.3.0の変更点と検証内容は [docs/RELEASE_NOTES_1.3.0.md](docs/RELEASE_
 正式公開版を使う場合は [v1.3.0 Release](https://github.com/Hoyomaru/DLsite-Update-Monitor/releases/tag/v1.3.0) のAssetsから次の`.pext`をダウンロードし、Playniteへインストールしてください。
 
 ```text
-DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_2_0.pext
+DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_3_0.pext
 ```
 
 公開AssetのSHA-256:
