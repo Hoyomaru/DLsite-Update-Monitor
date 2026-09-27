@@ -9,7 +9,7 @@
 
 ## 1. 現在の公開状況
 
-v1.3.0は2026-09-27の実環境Smoke確認とexact release candidate生成を完了しています。正式公開中Versionはv1.2.0のままです。candidate packageのexact `.pext` install gateを通過後にv1.3.0を公開します。
+v1.3.0は2026-09-27の実環境Smoke、exact release candidate生成、candidate packageそのものの`.pext` install確認を完了しています。公開GateはすべてPASSしており、同一Artifactを再buildせずGitHub Releaseへ昇格します。
 
 ```text
 Version: 1.3.0
@@ -20,7 +20,7 @@ Package: DLsiteUpdateMonitor_334542c6-1f81-4cc5-afd5-e052b021d37e_1_3_0.pext
 SHA-256: e463df6bc42589ec30b7415a05e965e7a396b97196b1c7d9b9aadc1d3146b0b3
 Toolbox: official Playnite 10.56
 Functional real-environment smoke: PASS
-Runtime exact-package install gate: PENDING
+Runtime exact-package install gate: PASS
 ```
 
 v1.2.0は2026-09-27に正式公開済みです。Update Center / automatic checkを含むbackward-compatible feature releaseです。
@@ -54,6 +54,8 @@ Runtime install gate: PASS
 2026-09-27にこのexact packageの実機install確認を完了しました。`runtime_install_gate` は `PASS`。publish workflowはこのArtifactを再buildせず、そのままGitHub Releaseへ昇格し、公開Asset digestも一致確認済みです。
 
 過去v0.1.0検証証跡: [../RELEASE_STATUS.md](../RELEASE_STATUS.md)
+
+v1.3.0公開本文: [RELEASE_NOTES_1.3.0.md](RELEASE_NOTES_1.3.0.md)
 
 v1.2.0公開本文: [RELEASE_NOTES_1.2.0.md](RELEASE_NOTES_1.2.0.md)
 
