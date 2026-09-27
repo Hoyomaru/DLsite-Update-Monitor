@@ -4,7 +4,7 @@
 
 今後の変更では、最初に [README.md](README.md)、この `DEVELOPMENT.md`、[CHANGELOG.md](CHANGELOG.md)、対象コードと関連テストを確認してください。内部構造は [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)、ビルドは [BUILD.md](BUILD.md)、Release工程は [docs/RELEASE.md](docs/RELEASE.md)、実機確認は [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md) を参照します。
 
-仕様の最終判断は**現在の実装とテスト**を基準にします。公開済みv1.1.0の検証記録と、v1.2.0 candidateのUpdate Center / automatic check検証を混同しないでください。
+仕様の最終判断は**現在の実装とテスト**を基準にします。公開済みv1.2.0の検証記録と、v1.3.0 candidateの差分ビュー / 監査修正検証を混同しないでください。
 
 ---
 
@@ -15,7 +15,7 @@
 | 現在の正式Version | 1.2.0 |
 | GitHub Release | `DLsite Update Monitor v1.2.0` 公開済み |
 | Git tag | `v1.2.0` |
-| Plugin / extension Version | `1.2.0` |
+| Plugin / extension Version | `1.3.0` candidate |
 | Playnite実機基準 | 10.56 |
 | Plugin target | .NET Framework 4.6.2 |
 | Core target | .NET Framework 4.6.2 / .NET 8.0 |

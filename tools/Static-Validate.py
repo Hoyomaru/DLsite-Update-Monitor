@@ -108,29 +108,27 @@ for name,version,src in required:
     if not re.search(rf'Include="{re.escape(name)}"\s+Version="{re.escape(version)}"',src):
         errors.append(f'Expected dependency not pinned: {name} {version}')
 
-# Public release install instructions must match the current published package block and plugin version.
+# Public release install instructions must match the current published package block.
+# Candidate source version may be newer than the currently published release while packaging is in progress.
 readme_path = ROOT/'README.md'
 if readme_path.exists():
     readme = readme_path.read_text(encoding='utf-8-sig')
-    version_match = re.search(r'<Version>([^<]+)</Version>', plugin)
-    version = version_match.group(1).strip() if version_match else None
     install_match = re.search(r'### 一般利用者向け\s*(.*?)(?=\n### |\n## )', readme, re.S)
     package_match = re.search(
-        r'現在公開中のv[^\s]+パッケージ:\s*```text\s*([^\r\n]+)\s*SHA-256:\s*([0-9a-fA-F]{64})\s*```',
+        r'現在公開中のv(?P<version>\d+(?:\.\d+){2})パッケージ:\s*```text\s*(?P<package>[^\r\n]+)\s*SHA-256:\s*(?P<sha>[0-9a-fA-F]{64})\s*```',
         readme,
         re.S)
-    if not version:
-        errors.append('Plugin Version could not be read for README release validation')
-    elif not install_match:
+    if not install_match:
         errors.append('README general-user install section missing')
     elif not package_match:
         errors.append('README current published package block missing or malformed')
     else:
         install = install_match.group(1)
-        package_name = package_match.group(1).strip()
-        package_hash = package_match.group(2).strip()
+        published_version = package_match.group('version')
+        package_name = package_match.group('package').strip()
+        package_hash = package_match.group('sha').strip()
         for needle, msg in [
-            (f'/releases/tag/v{version}', 'README install release link does not match plugin Version'),
+            (f'/releases/tag/v{published_version}', 'README install release link does not match current published release block'),
             (package_name, 'README install package name does not match current published package block'),
             (package_hash, 'README install SHA-256 does not match current published package block'),
         ]:

@@ -8,6 +8,12 @@
 
 ## [Unreleased]
 
+次回変更はここへ記録します。
+
+## [1.3.0] - 2026-09-27
+
+v1.2.0のTracking Schema 1とfail-closed設計を維持しながら、更新内容の差分ビューと監査で確認した永続化・HTTP・タグ同期の安全性改善を含むbackward-compatible feature releaseです。
+
 ### Added
 
 - Update Centerに、確認済み基準と現在値の更新情報・ファイル容量を左右比較する差分ビューを追加。
@@ -35,6 +41,9 @@
 - SnapshotDifferのfield diff testを追加。
 - 入れ子の更新情報、同値の複数容量表記、競合する複数容量表記のparser fixture/testを追加。
 - TrackingDatabaseClonerの対象property追加時にレビューを強制する契約testを追加。
+- 変更後のPlaynite 10.56実環境確認: **PASS**（2026-09-27、ユーザー確認）。
+- Release prep前のmain CI: Core 87 tests / Static validation / Windows net462 Plugin build / payload boundary: **PASS**。
+- v1.3.0 exact `.pext` install gate: candidate package生成後に実施。
 
 ## [1.2.0] - 2026-09-27
 

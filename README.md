@@ -23,7 +23,7 @@ DLsite作品を多数管理していると、各商品ページを手作業で�
 - 現在の正式Version: **1.2.0**
 - GitHub Release: **v1.2.0 公開済み**
 - 最新公開Git tag: **`v1.2.0`**
-- 開発状態: **v1.2.0公開済み。次の変更はUnreleasedとして管理**
+- 開発状態: **v1.3.0 Release Candidate準備中（正式公開はv1.2.0）**
 - Playnite実機検証基準: **10.56**
 - v1.2.0 Core自動テスト / Static validation: **PASS（GitHub Actions）**
 - v1.2.0 Windows Plugin build / payload境界検証: **PASS（GitHub Actions）**
@@ -33,7 +33,7 @@ DLsite作品を多数管理していると、各商品ページを手作業で�
 - GitHub Actions / CI: **導入済み**
 - License: **MIT**
 
-v1.2.0は、v1.1.0の安全設計を維持したままUpdate Centerと既定OFFのautomatic checkを追加したbackward-compatible feature releaseです。Update Center起動・theme integration・Settings表示・automatic check Gate H・最終`.pext` installまでPlaynite 10.56実機で確認済みです。
+v1.2.0は、v1.1.0の安全設計を維持したままUpdate Centerと既定OFFのautomatic checkを追加したbackward-compatible feature releaseです。現在は、差分ビューと監査修正を含むv1.3.0 candidateを準備しています。今回の機能変更はPlaynite 10.56実環境で確認済みで、正式公開前にv1.3.0 exact `.pext` のinstall gateを実施します。
 
 現在公開中のv1.2.0パッケージ:
 
